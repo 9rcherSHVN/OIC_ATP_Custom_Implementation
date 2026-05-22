@@ -1,0 +1,116 @@
+%%  Tier 2 — Phases 1 · 2 · 3  |  EAM Data Ingest → ATP Staging → Batch Dispatch
+%%  Flows: F1·DATA_EXTRA  F2·BATCH_PROCE  F3·STAG_DATA_LOAD
+%%  Rendering: Mermaid v10.9+  |  sequenceDiagram
+%%  See also: 00-overview-topology.mmd  |  drill/  (no drill-down for these phases)
+
+sequenceDiagram
+    autonumber
+
+    box OIC Platform
+        participant Sched as OIC Scheduler
+        participant AppEvt as OIC App Event Bus
+    end
+    box OIC Integration Flows
+        participant F1 as F1·DATA_EXTRA
+        participant F2 as F2·BATCH_PROCE
+        participant F3 as F3·STAG_DATA_LOAD
+    end
+    box External Systems
+        participant EAM as EAM System
+    end
+    box Oracle ATP DB
+        participant ATP as ATP DB
+    end
+
+    %% ─────────────────────────────────────────────────────────────────────────
+    rect rgb(230,245,255)
+    Note right of Sched: PHASE 1 · PO Data Extraction  (F1·DATA_EXTRA)<br/>Conn: IFP_PO_EAM_REST_CONNEC · IFP_PO_ATP_DB_CONNEC · APPLICATION_EVENT_CONNECTION
+
+    Sched->>F1: Schedule trigger [every 15 min · Asia/Calcutta TZ]
+
+    Note right of F1: Init assigns — ImportSetID · EAMtenant · EAMPOGridName<br/>EmailNotification · EssJob_ParameterId · gv_importSetID<br/>STITCH (processor_1141) · ACTIVITY_STREAM_LOGGER Logger1
+
+    Note right of F1: DataExtractionEAMScope [try t0] — EAM fetch FIRST, batch creation LAST
+
+    Note right of F1: WHILE lv_hdr_nextcursorposition ≠ ""<br/>DVM applied: IFP_EAMGridScreen_Details_Lookup<br/>[try t2 · HeaderGridextract]
+    loop Header grid pagination
+        F1->>EAM: GET FetchHdrGridDetails(EAMPOGridName, cursor, EAMtenant)
+        EAM-->>F1: Header grid page + lv_hdr_nextcursorposition
+        F1->>ATP: EAMHdrGridInsert(header grid rows, ImportSetID)
+    end
+    critical Header extraction fault [CATCH_ALL ta0]
+        option CATCH_ALL raised
+            F1->>ATP: hdrinsertionexception(fault detail, ImportSetID)
+            F1->>F1: Email notification → STOP
+    end
+
+    Note right of F1: WHILE lv_line_nextcursorposition ≠ ""<br/>DVMs: IFP_EAMOrg_OraBU_Default_Lookup · IFP_EAMTo_OracleUOM_Mapping_Lookup<br/>[Source var is misspelled lv_line_nextcursorpositon in the integration code]<br/>[try t3 · LineGridextract]
+    loop Line grid pagination
+        F1->>EAM: GET FetchLineGridDetails(EAMPOGridName, cursor, EAMtenant)
+        EAM-->>F1: Line grid page + lv_line_nextcursorposition
+        F1->>ATP: EAMLineGridInsert(line grid rows, ImportSetID)
+    end
+    critical Line extraction fault [CATCH_ALL ta1]
+        option CATCH_ALL raised
+            F1->>ATP: lineinsertionexception(fault detail, ImportSetID)
+            F1->>F1: Email notification → STOP
+    end
+
+    Note right of F1: PObatchCreation [try t1] — runs AFTER both EAM fetch loops complete
+    F1->>ATP: Insertintoextractloadtable(ImportSetID, OIC instance metadata)
+    F1->>ATP: POinboundbatchcreation(P_IMPORTID, P_OICINSTANCE_ID, P_INTG_USER)
+    ATP-->>F1: P_OUT_STATUS · P_ERROR_MSG
+    critical PObatchCreation fault [CATCH_ALL ta3]
+        option CATCH_ALL raised
+            F1->>ATP: Deletedatafromstagingtable(ImportSetID) — clears staging on batch creation failure
+            F1->>F1: ehStop
+    end
+
+    Note right of F1: CONTENT_BASED_ROUTER [s0·sc0]: proceeds only if POinboundbatchcreation succeeded<br/>STITCH processor_395 maps ImportSetID + OIC metadata → event payload
+    F1->>AppEvt: PUBLISH TRIGGERNEWPOBATCH [fire-and-forget · TARGET role]
+
+    critical Global scope fault
+        option CATCH_ALL raised
+            F1->>F1: Email notification → ehStop
+    end
+    end
+    %% ─────────────────────────────────────────────────────────────────────────
+
+    rect rgb(255,245,230)
+    Note right of AppEvt: PHASE 2 · Batchwise Dispatch  (F2·BATCH_PROCE)<br/>Conn: APPLICATION_EVENT_CONNECTION · IFP_PO_ATP_DB_CONNEC · PRESEEDED_COLLOCATED_CONN_1741
+
+    AppEvt->>F2: SUBSCRIBE TRIGGERNEWPOBATCH [fire-and-forget consumer]
+
+    Note right of F2: Global vars: BATCH_ID · IMPORT_ID<br/>STITCH (processor_159 · processor_162)
+
+    F2->>ATP: ponewbatchfetch(P_IMPORT_ID)
+    ATP-->>F2: List of records — BATCH_ID · BATCH_STATUS · BATCH_FILE_NAME · OICINSTNCE_ID
+
+    loop FOR each batch record
+        F2->>ATP: updatebatchstatusasDraft(BATCH_ID) — status → DRAFT
+        F2->>F3: COLLOCATED InvokePOStageloadintegration(BATCH_ID, pbatchId, poicintid)<br/>[PRESEEDED_COLLOCATED_CONN_1741 — synchronous · waits for reply]
+        F3-->>F2: reply
+    end
+
+    critical Global scope fault
+        option CATCH_ALL raised
+            F2->>F2: Email notification → ehStop
+    end
+    end
+    %% ─────────────────────────────────────────────────────────────────────────
+
+    rect rgb(240,255,240)
+    Note right of F3: PHASE 3 · ATP Stage Load  (F3·STAG_DATA_LOAD)<br/>Conn: IFP_PO_OIC_REST_CONNEC (trigger) · IFP_PO_ATP_DB_CONNEC · PRESEEDED_COLLOCATED_CONN_1741<br/>Tracking: pbatchId · poicintid · tracking_var_3
+
+    Note right of F3: Triggered by F2 collocated invoke<br/>REST receive endpoint: callpostagerest via IFP_PO_OIC_REST_CONNEC
+
+    F3->>ATP: mainstageload(BATCH_ID, pbatchId)
+    ATP-->>F3: Batch split into per-BU staging records
+
+    F3->>F4: COLLOCATED CallChildPOValidationIntegration(pbatchId, poicintid, tracking_var_3)<br/>[PRESEEDED_COLLOCATED_CONN_1741 — synchronous · waits for reply]
+
+    critical Global scope fault
+        option CATCH_ALL raised
+            F3->>F3: Email notification → ehStop
+    end
+    end

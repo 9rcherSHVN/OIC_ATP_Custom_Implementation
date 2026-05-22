@@ -1,0 +1,75 @@
+flowchart LR
+
+    subgraph INT3["③ IFP_PO_IMPORT_CALLBA_REPROC  ·  4 procedures"]
+
+        %% =========================================================
+        %% Procedure 1: Entry + setup + request ID stamping
+        %% =========================================================
+        subgraph P1["Procedure 1 — Entry and request preparation"]
+            direction LR
+            C1([REST Trigger<br/>POST /callbackreprocess<br/>Params: loadrequestid · importrequestid])
+            C2["Assign common vars<br/>Resolve via IFP_Common_Utility_Lookup<br/>key: RICE_ID = INT-PO-01a"]
+            C3{"loadrequestid ≠ ''<br/>OR importrequestid ≠ ''"}
+            C4[("ADMIN.XXIFP_POINBOUND_INT_PKG<br/>► XXIFP_UPDATE_IMPORT_REQUESTID<br/>Stamp import request ID<br/>into staging record")]
+            C5[Assign: var_batch_id]
+
+            C1 --> C2 --> C3
+            C3 -->|Yes — IDs present| C4 --> C5
+        end
+
+        %% =========================================================
+        %% Procedure 2: PO error detail report
+        %% =========================================================
+        subgraph P2["Procedure 2 — PO Error Detail Report"]
+            direction LR
+            C6[[BIP SOAP: callBIPReport<br/>Fetch PO Error Detail Report]]
+            C7["Transform<br/>+ Stage File Write<br/>(error report content)"]
+            C8{"Error file<br/>size > 11 bytes?"}
+            C9["Stage File Read<br/>(segmented loop over report rows)"]
+            C10[("ADMIN.XXIFP_POINBOUND_INT_PKG<br/>► insertpoerroratp<br/>Insert error rows into ATP staging")]
+            C11[("ADMIN.XXIFP_POINBOUND_INT_PKG<br/>► XXIFP_PO_UPDATE_ERROR_MSG<br/>Write error messages to<br/>staging record")]
+            C12[[BIP SOAP: callImportDetailsReport<br/>Fetch PO Import Details Report]]
+
+            C6 --> C7 --> C8
+            C8 -->|Yes — errors exist| C9 --> C10 --> C11 --> C12
+            C8 -->|No — empty report| C12
+        end
+
+        %% =========================================================
+        %% Procedure 3: PO import details report
+        %% =========================================================
+        subgraph P3["Procedure 3 — PO Import Details Report"]
+            direction LR
+            C13["Transform<br/>+ Stage File Write<br/>(import details content)"]
+            C14{"Import details<br/>file size > 11 bytes?"}
+            C15["Stage File Read<br/>(segmented loop over detail rows)"]
+            C16[("ADMIN.XXIFP_POINBOUND_INT_PKG<br/>► insertImportDetailsintoATPDB<br/>Insert import detail rows into ATP")]
+            C17[("ADMIN.XXIFP_POINBOUND_INT_PKG<br/>► XXIFP_PO_UPDATE_IMPORT_DETAILS<br/>Finalise import detail records")]
+            C18["TRY: ProcessedtrxReport<br/>(always executes)"]
+
+            C13 --> C14
+            C14 -->|Yes — details exist| C15 --> C16 --> C17 --> C18
+            C14 -->|No — empty report| C18
+        end
+
+        %% =========================================================
+        %% Procedure 4: Processed transaction report + email
+        %% =========================================================
+        subgraph P4["Procedure 4 — Processed transaction report and notification"]
+            direction LR
+            C19[("ADMIN.XXIFP_POINBOUND_INT_PKG<br/>► XXIFP_FETCH_PO_REPORT_DATA<br/>Fetch consolidated processed<br/>transaction report data")]
+            C20["Stage Write: report row data<br/>(WritePOprocessdata)"]
+            C21["Stage Write: report column data<br/>(writepoprocesscolumn)"]
+            C22[/"OIC Email Notification<br/>To: IFP_Common_Utility_Lookup → IT_Distribution_List1<br/>From: IFP_Common_Utility_Lookup → From_Email_ID<br/>Subject: 'PO Integration Processed Data For Batch Id ' + var_batch_id<br/>Attachment: WritePOprocessdata stage file"/]
+            C23([Stop])
+
+            C18 --> C19 --> C20 --> C21 --> C22 --> C23
+        end
+
+        %% =========================================================
+        %% Cross-procedure routing preserving original logic
+        %% =========================================================
+        C5 --> C6
+        C3 -->|No — both empty, skip router| C18
+
+    end

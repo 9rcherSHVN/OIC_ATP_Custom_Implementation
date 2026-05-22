@@ -1,0 +1,154 @@
+%%  Tier 2 — Phases 4 · 5  |  Validation + Reference Data Load → FBDI Import
+%%  Flows: F4·VALIDA  F5·IMPORT
+%%  Rendering: Mermaid v10.9+  |  sequenceDiagram
+%%  Drill-downs: drill/04a-validation-bip-loads.mmd  |  drill/04b-validation-item-creation.mmd
+%%  See also: 00-overview-topology.mmd
+
+sequenceDiagram
+    autonumber
+
+    box OIC Integration Flows
+        participant F3 as F3·STAG_DATA_LOAD
+        participant F4 as F4·VALIDA
+        participant F5 as F5·IMPORT
+    end
+    box OIC Platform
+        participant AppEvt as OIC App Event Bus
+    end
+    box External Systems
+        participant BIP as Oracle BIP SOAP
+        participant ERP as Oracle ERP Cloud
+    end
+    box Oracle ATP DB
+        participant ATP as ATP DB
+    end
+
+    %% ─────────────────────────────────────────────────────────────────────────
+    rect rgb(255,240,255)
+    Note right of F4: PHASE 4 · Validation + Reference Data Load  (F4·VALIDA)<br/>Conn: IFP_PO_OIC_REST_CONNEC (trigger) · IFP_PO_ORACL_BIP_SOAP_CONNE<br/>      IFP_PO_ORACL_ERP_CLOUD_CONNE · IFP_PO_ATP_DB_CONNEC · PRESEEDED_COLLOCATED_CONN_1741<br/>Tracking: pbatchId · poicintid · tracking_var_3<br/>Drill-down: 04a-validation-bip-loads.mmd · 04b-validation-item-creation.mmd
+
+    Note right of F4: Triggered by F3 collocated invoke<br/>REST receive endpoint: POIntevalidation via IFP_PO_OIC_REST_CONNEC<br/>Init assigns — BATCH_ID · BU · run dates · item creation flags
+
+    F4->>ATP: fecthBUbatchlastrundetails(BATCH_ID)
+    ATP-->>F4: Per-BU last run dates
+
+    opt BU has pending batches [ROUTER: sc2]
+        loop FOR each BU batch
+            Note right of F4: setreportrundate assigned<br/>5 BIP report calls — see drill/04a-validation-bip-loads.mmd
+            F4->>BIP: BIPgetporeportdetails(runDate, BU)
+            F4->>ATP: loadporptdetaildata(segment rows)
+            F4->>BIP: BIPgetsupplierReport(runDate, BU)
+            F4->>ATP: loadPOsupplierdet(rows)
+            F4->>BIP: BIPgetCOAglccReport(runDate, BU)
+            F4->>ATP: loadCOAglccdetails(rows)
+            F4->>BIP: BIPgetInvItemReport(runDate, BU)
+            F4->>ATP: loadInvItemdetailsrpt(rows)
+            F4->>BIP: BIPgetPOProjectinfo(runDate, BU)
+            F4->>ATP: LoadPOProjectrpt(rows)
+            F4->>ATP: updatelastrundate(BU, runDate)
+        end
+    end
+
+    Note right of F4: POValidationScope — see drill/04b-validation-item-creation.mmd for item loops
+    F4->>ATP: POdatavalidation(BATCH_ID)
+    F4->>ATP: ItemcustomInsertioncall(BATCH_ID)
+    F4->>ATP: GetMasterItemcreationData(BATCH_ID)
+    ATP-->>F4: Master item candidates
+
+    opt Master items to create [ROUTER: sc0]
+        loop FOR each master item
+            F4->>ERP: CreateMasterItems(item attributes) [ERP Cloud adapter]
+            F4->>ATP: updateItemIDcreation(itemId, result)
+            critical Item creation fault
+                option CATCH_ALL raised
+                    F4->>ATP: UpdateItemcreationError(BATCH_ID, error)
+            end
+        end
+    end
+
+    F4->>ATP: GetChildOrgItemcreationdetails(BATCH_ID)
+    ATP-->>F4: Child org item assignments
+
+    opt Child org items to create [ROUTER: sc1]
+        loop FOR each child org item
+            F4->>ERP: CreateChildItemOrg(itemId, orgCode) [ERP Cloud adapter]
+            F4->>ATP: updatechildItemcreation(result)
+            critical Child org item creation fault
+                option CATCH_ALL raised
+                    F4->>ATP: updatecreateItemchilderror(BATCH_ID, error)
+            end
+        end
+    end
+
+    F4->>ATP: CallValidatePOItemproc(BATCH_ID)
+    F4->>ATP: UpdateInprocessbatchstatus(BATCH_ID, IN_PROCESS)
+    F4->>F5: COLLOCATED CallChildImportInboundint(pbatchId, tracking_var_2, tracking_var_3)<br/>[PRESEEDED_COLLOCATED_CONN_1741 — synchronous]
+    F4-->>F3: REPLY to F3 caller
+
+    critical Global scope fault
+        option CATCH_ALL raised
+            F4->>F4: Email notification → ehStop
+    end
+    end
+    %% ─────────────────────────────────────────────────────────────────────────
+
+    rect rgb(255,250,220)
+    Note right of F5: PHASE 5 · FBDI Generation + ESS Job Submission  (F5·IMPORT)<br/>Conn: IFP_PO_OIC_REST_CONNEC (trigger) · IFP_PO_ORACL_ERP_CLOUD_CONNE<br/>      IFP_PO_ORACL_ERP_REST_CONNE · IFP_PO_ATP_DB_CONNEC · APPLICATION_EVENT_CONNECTION<br/>Tracking: pbatchId · tracking_var_2 · tracking_var_3
+
+    Note right of F5: Triggered by F4 collocated invoke<br/>REST receive endpoint: poinboundmain via IFP_PO_OIC_REST_CONNEC<br/>Init assigns — BATCH_ID · BU params · FBDI file name params
+
+    F5->>ATP: fetchdistincprocrementbu(BATCH_ID)
+    ATP-->>F5: Distinct procurement BUs
+
+    opt FBDI-mode batches exist [FBIDIScope ROUTER: sc0]
+        loop FOR each procurement BU
+            F5->>ERP: GET GetBUID(BU name) [IFP_PO_ORACL_ERP_REST_CONNE]
+            ERP-->>F5: BU internal ID
+            F5->>ERP: GET GETBUYER(BU) [IFP_PO_ORACL_ERP_REST_CONNE]
+            ERP-->>F5: Default buyer details
+            F5->>ATP: updatetrasferredprocessid(BATCH_ID, BU, TRANSFERRING)
+            Note right of F5: OIC stageFile writes — 7 FBDI flat files:<br/>PO_HEADERS_INTERFACE_ALL.csv · PO_LINES_INTERFACE.csv<br/>PO_LINE_LOCATIONS_INTERFACE.csv · PO_DISTRIBUTIONS_INTERFACE_ALL.csv<br/>process_column.csv · process_data.csv · .properties
+            F5->>ERP: POImportOrdersTOERP [ERP Cloud adapter]<br/>UCM upload → ESS "Load Interface File for Import"<br/>→ ESS "Import Purchase Orders" [ASYNC — OIC does not wait]
+            F5->>ATP: updatetrasferredprocessid(BATCH_ID, BU, essRequestId)
+        end
+    end
+
+    Note right of F5: APIbasedfetchdata — change orders and cancellations
+    F5->>ATP: GetAPIpodata(BATCH_ID)
+    F5->>ATP: GetAPIChangeData(BATCH_ID)
+    ATP-->>F5: Pending change orders
+
+    opt Change orders exist [ROUTER: sc3]
+        loop FOR each change order
+            F5->>ERP: updatechangeorder(PO header, change details) [ERP Cloud adapter]
+            F5->>ATP: updatepoheaderchageAPIstatus(result)
+            critical Change order fault
+                option CATCH_ALL raised
+                    F5->>ATP: UpdateAPIchangeError(BATCH_ID, error)
+                    F5->>F5: ACTIVITY_STREAM_LOGGER (lg2)
+            end
+        end
+    end
+
+    F5->>ATP: gethdrcancelpo(BATCH_ID)
+    F5->>ATP: getpohdrcanceldata(BATCH_ID)
+    ATP-->>F5: PO headers pending cancellation
+
+    opt Cancel PO headers exist [ROUTER: sc4]
+        loop FOR each cancel PO header
+            F5->>ERP: cancelpohdrapi(PO header) [ERP Cloud adapter]
+            F5->>ATP: updatecancelapiresult(result)
+            critical Cancel fault
+                option CATCH_ALL raised
+                    F5->>ATP: updatecancelpohdeerror(BATCH_ID, error)
+            end
+        end
+    end
+
+    F5->>AppEvt: PUBLISH PUBLISH_EAMPOSTATUSUPDAT [fire-and-forget]<br/>status=SUBMITTED · ESS job is running asynchronously
+
+    critical Global scope fault
+        option CATCH_ALL raised
+            F5->>F5: Email notification → ehStop
+    end
+    end

@@ -1,0 +1,69 @@
+%%  Tier 3 · Drill-down — Phase 7 · F8 Success Path
+%%  Flow: F8·STATU_UPDAT  (IFP_EAM_STATU_UPDAT_INTEG_M)
+%%  Scope: UpdateEAMSuccessStatus scope — success PO writeback + cancel line sub-loop
+%%  Rendering: Mermaid v10.9+  |  sequenceDiagram
+%%  Parent: 30-callback-writeback-phases-6-7.mmd
+%%  Related: drill/08b-writeback-error-path.mmd
+
+sequenceDiagram
+    autonumber
+
+    box OIC Integration Flows
+        participant F7 as F7·STATUS_EVENT
+        participant F8 as F8·STATU_UPDAT
+    end
+    box External Systems
+        participant EAM as EAM System<br/>[IFP_PO_EAM_REST_CONNEC · BASIC_AUTH]
+    end
+    box Oracle ATP DB
+        participant ATP as ATP DB<br/>[IFP_PO_ATP_DB_CONNEC]
+    end
+
+    Note right of F7: TRIGGER — F7 subscribes PUBLISH_EAMPOSTATUSUPDAT<br/>⚠ Fires TWICE per batch:<br/>  Call 1 — status=SUBMITTED (from F5, ESS job still running)<br/>  Call 2 — status=COMPLETE or ERROR (from F6, ESS job done)<br/>p_Success_loadtype and p_Status_code distinguish the two calls
+
+    F7->>F8: COLLOCATED CallPOEAMUpdateStatusIntegration(PBatchID, p_Success_loadtype, p_Status_code)<br/>[PRESEEDED_COLLOCATED_CONN_1741 — synchronous]
+
+    Note right of F8: Init assigns — BATCH_ID · success flags · error code · EAM API params<br/>Processors: a0–a9 (12 assignments) · a12 · a15 · a8 · a9
+
+    rect rgb(230,255,245)
+    Note right of F8: UpdateEAMSuccessStatus scope [try t12]<br/>Scope assigns: lv_successBatchId · lv_successPONumber · lv_successBUCode  [a18 · a19 · a20]
+
+    F8->>ATP: GetSuccessPOs(BATCH_ID) [Oracle ATP1 — application_2561]
+    ATP-->>F8: List of successfully imported PO records
+
+    opt Success POs exist  [ROUTER s6 · sc7]
+
+        loop FOR each success PO  [processor_1845 FOR — f5]
+
+            rect rgb(220,255,235)
+            Note right of F8: EAMPOSuccessAPICall scope [try t13]<br/>Assign: lv_eamPONumber · lv_eamBUCode  [a21 — processor_1904]
+
+            F8->>EAM: PUT UpdateEAMPOSuccessStatus(PO number, APPROVED status)<br/>[REST7 — application_1931]
+            EAM-->>F8: HTTP response
+            end
+
+            F8->>ATP: SentEAMUpdate(BATCH_ID, PO record) [Oracle ATP7 — application_2757]
+            ATP-->>F8: Update confirmation
+
+            opt Cancel lines exist within this PO  [ROUTER s0 · sc0]
+                loop FOR each cancel line  [processor_2774 FOR — f0]
+                    rect rgb(255,245,220)
+                    Note right of F8: CancelStatusScope [try t0]
+                    F8->>EAM: PUT UpdateCancelLineStatus(line key, CANCELLED)<br/>[REST6 — application_2795]
+                    EAM-->>F8: HTTP response
+                    end
+                end
+            end
+
+            F8->>ATP: Sent_EAMUpdate(BATCH_ID, record) [Oracle ATP4 — application_2696]
+
+            critical Success writeback fault  [CATCH_ALL ta5 — processor_2459]
+                option CATCH_ALL raised
+                    F8->>F8: ACTIVITY_STREAM_LOGGER lg0 (processor_2464)<br/>Logs: BATCH_ID · PO number · EAM API fault detail
+            end
+
+        end
+    end
+    end
+
+    Note right of F8: Exit — continues to UpdateErrorinEAMHexagon scope<br/>See drill/08b-writeback-error-path.mmd

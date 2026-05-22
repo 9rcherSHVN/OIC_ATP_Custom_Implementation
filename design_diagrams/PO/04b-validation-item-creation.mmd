@@ -1,0 +1,88 @@
+%%  Tier 3 · Drill-down — Phase 4 · Item Creation Loops
+%%  Flow: F4·VALIDA  (IFP_EAM_PO_VALIDA_INTEGR)
+%%  Scope: POValidationScope — stored proc validation + ERP master/child item creation
+%%  Rendering: Mermaid v10.9+  |  sequenceDiagram
+%%  Parent: 20-validate-import-phases-4-5.mmd
+%%  Related: drill/04a-validation-bip-loads.mmd
+
+sequenceDiagram
+    autonumber
+
+    box OIC Integration Flows
+        participant F4 as F4·VALIDA
+        participant F5 as F5·IMPORT
+    end
+    box External Systems
+        participant ERP as Oracle ERP Cloud<br/>[IFP_PO_ORACL_ERP_CLOUD_CONNE]
+    end
+    box Oracle ATP DB
+        participant ATP as ATP DB<br/>[IFP_PO_ATP_DB_CONNEC]
+    end
+
+    Note right of F4: Entry point — POValidationScope [try t5]<br/>After BIP report loads complete (see drill/04a-validation-bip-loads.mmd)
+
+    rect rgb(255,240,255)
+    Note right of F4: Validation stored procedure calls — sequential, no branching
+
+    F4->>ATP: POdatavalidation(BATCH_ID) [Oracle ATP8]
+    ATP-->>F4: Cross-validation result — EAM data vs ERP reference data
+
+    F4->>ATP: ItemcustomInsertioncall(BATCH_ID) [Oracle ATP9]
+    ATP-->>F4: Custom item insertion status
+
+    F4->>ATP: GetMasterItemcreationData(BATCH_ID) [Oracle ATP10]
+    ATP-->>F4: Master item candidates list
+    end
+
+    rect rgb(220,245,255)
+    Note right of F4: Master item creation loop [ROUTER sc0 · processor_990]<br/>Scope: Scopemasteritemcreation [try t6]
+
+    opt Master items exist to create
+        loop FOR each master item candidate  [processor_1001 FOR]
+            F4->>ERP: CreateMasterItems(itemCode, itemDescription, itemClass, ...)<br/>[Oracle ERP Cloud1 — ERP Cloud adapter]
+            ERP-->>F4: Created item ID or fault
+            F4->>ATP: updateItemIDcreation(itemId, ERP result) [Oracle ATP11]
+            critical Master item creation fault
+                option CATCH_ALL raised [processor_1192]
+                    F4->>ATP: UpdateItemcreationError(BATCH_ID, fault detail) [Oracle ATP12]
+            end
+        end
+    end
+    end
+
+    rect rgb(240,255,230)
+    Note right of F4: Child org item assignment loop [ROUTER sc1 · processor_1231]
+
+    F4->>ATP: GetChildOrgItemcreationdetails(BATCH_ID) [Oracle ATP13]
+    ATP-->>F4: Child org item assignments list
+
+    opt Child org items exist
+        loop FOR each child org item  [processor_1242 FOR]
+            F4->>ERP: CreateChildItemOrg(itemId, orgCode, itemAttributes)<br/>[Oracle ERP Cloud2 — ERP Cloud adapter]
+            ERP-->>F4: Assignment result or fault
+            F4->>ATP: updatechildItemcreation(result) [Oracle ATP14]
+            critical Child org item assignment fault
+                option CATCH_ALL raised [processor_1448]
+                    F4->>ATP: updatecreateItemchilderror(BATCH_ID, fault detail) [Oracle ATP15]
+            end
+        end
+    end
+    end
+
+    rect rgb(255,250,220)
+    Note right of F4: Final validation and status update — sequential
+
+    F4->>ATP: CallValidatePOItemproc(BATCH_ID) [Oracle ATP16]
+    ATP-->>F4: Item validation result
+
+    F4->>ATP: UpdateInprocessbatchstatus(BATCH_ID, IN_PROCESS) [Oracle ATP17]
+    end
+
+    Note right of F4: Exit — COLLOCATED invoke to F5<br/>CallChildImportInboundint(pbatchId, tracking_var_2, tracking_var_3)<br/>[PRESEEDED_COLLOCATED_CONN_1741 · Integration1]<br/>Then REPLY to F3 caller
+
+    F4->>F5: COLLOCATED CallChildImportInboundint(pbatchId, tracking_var_2, tracking_var_3)
+
+    critical Global scope fault
+        option CATCH_ALL raised
+            F4->>F4: Email notification → ehStop
+    end

@@ -1,0 +1,80 @@
+%%  Tier 3 · Drill-down — Phase 7 · F8 Error Path
+%%  Flow: F8·STATU_UPDAT  (IFP_EAM_STATU_UPDAT_INTEG_M)
+%%  Scope: UpdateErrorinEAMHexagon — error header writeback + nested error line sub-loop
+%%  Rendering: Mermaid v10.9+  |  sequenceDiagram
+%%  Parent: 30-callback-writeback-phases-6-7.mmd
+%%  Related: drill/08a-writeback-success-path.mmd
+
+sequenceDiagram
+    autonumber
+
+    box OIC Integration Flows
+        participant F8 as F8·STATU_UPDAT
+    end
+    box External Systems
+        participant EAM as EAM System<br/>[IFP_PO_EAM_REST_CONNEC · BASIC_AUTH]
+    end
+    box Oracle ATP DB
+        participant ATP as ATP DB<br/>[IFP_PO_ATP_DB_CONNEC]
+    end
+
+    Note right of F8: Entry point — UpdateErrorinEAMHexagon scope [try t9]<br/>Runs after UpdateEAMSuccessStatus scope (see drill/08a-writeback-success-path.mmd)<br/>Scope assigns: lv_errorBatchId · lv_errorHeaderKey · lv_errorCode  [a13 · a14 · a16]
+
+    rect rgb(255,235,235)
+    Note right of F8: Fetch all error header records for this batch
+
+    F8->>ATP: getPOerrorrecords(BATCH_ID) [Oracle ATP3 — application_2635]
+    ATP-->>F8: Error records per PO header<br/>Fields: INTERFACE_HEADER_KEY · BATCH_ID · ORDER · UHPO_HEADER_ID<br/>        EAM_REVISION_ATT5 · EAM_ORGANIZATION · ERROR_CODE · ERROR_MSG (4000 chars)
+
+    opt Error headers exist  [ROUTER s5 · sc6]
+
+        loop FOR each error header  [processor_1396 FOR — f3]
+
+            rect rgb(255,220,220)
+            Note right of F8: EAMHeadererrorAPIcall scope [try t10]<br/>Assign: lv_eamHeaderKey · lv_errorCode  [a17 — processor_2169]
+
+            F8->>EAM: PUT EAMcallHdrErrorAPI(INTERFACE_HEADER_KEY, ERROR_CODE, ERROR_MSG)<br/>[REST6 — application_1691]
+            EAM-->>F8: HTTP response — header error acknowledgement
+
+            F8->>EAM: PUT UpdateEAMPOStatus(PO header, ERROR status)<br/>[REST4 — application_1451]
+            EAM-->>F8: HTTP response — PO status updated
+            end
+
+            F8->>ATP: UpdateSentEAM(BATCH_ID, header error sent flag) [Oracle ATP5 — application_2713]
+
+            critical Header error writeback fault  [CATCH tc2 — processor_2322]
+                option CATCH raised
+                    F8->>F8: ACTIVITY_STREAM_LOGGER lg4 (processor_2325)<br/>Logs: BATCH_ID · INTERFACE_HEADER_KEY · EAM API fault detail
+            end
+
+            F8->>ATP: getpolineerrordetails(BATCH_ID, INTERFACE_HEADER_KEY) [Oracle ATP2 — application_2600]
+            ATP-->>F8: Error line records for this header
+
+            loop FOR each error line  [processor_1527 FOR — f4]
+
+                rect rgb(255,235,220)
+                Note right of F8: EAMLineErrorAPICall scope [try t11]
+
+                F8->>EAM: PUT EAMCallLineErrorAPI(line key, line error details)<br/>[REST5 — application_1582]
+                EAM-->>F8: HTTP response — line error acknowledgement
+                end
+
+                F8->>ATP: SentEAMUpdate(BATCH_ID, line error sent flag) [Oracle ATP6 — application_2730]
+
+                critical Line error writeback fault  [CATCH tc1 — processor_1599]
+                    option CATCH raised
+                        F8->>F8: ACTIVITY_STREAM_LOGGER lg3 (processor_1602)<br/>Logs: BATCH_ID · line key · EAM API fault detail
+                end
+
+            end
+
+        end
+    end
+    end
+
+    critical Global scope fault  [CATCH_ALL ta4 — processor_2394]
+        option CATCH_ALL raised
+            F8->>F8: Email notification (processor_2399) → ehStop
+    end
+
+    Note right of F8: F8 stops — F7 caller receives reply<br/>F7 stops — AppEvent consumer instance closes

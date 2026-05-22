@@ -1,0 +1,106 @@
+%%  Tier 3 · Drill-down — Phase 4 · BIP Reference Data Loads
+%%  Flow: F4·VALIDA  (IFP_EAM_PO_VALIDA_INTEGR)
+%%  Scope: BIPreportcall try — 5 BIP SOAP calls + ATP segment loads, per BU per batch
+%%  Rendering: Mermaid v10.9+  |  sequenceDiagram
+%%  Parent: 20-validate-import-phases-4-5.mmd
+%%  Related: drill/04b-validation-item-creation.mmd
+
+sequenceDiagram
+    autonumber
+
+    box OIC Integration Flows
+        participant F4 as F4·VALIDA
+    end
+    box External Systems
+        participant BIP as Oracle BIP SOAP<br/>[IFP_PO_ORACL_BIP_SOAP_CONNE]
+    end
+    box Oracle ATP DB
+        participant ATP as ATP DB<br/>[IFP_PO_ATP_DB_CONNEC]
+    end
+
+    Note right of F4: Entry point — after fecthBUbatchlastrundetails(BATCH_ID) returns<br/>ROUTER sc2: proceeds only if BU has pending batches<br/>ROUTER sc3: if BU conditions not met → throw (abort batch)
+
+    F4->>ATP: fecthBUbatchlastrundetails(BATCH_ID)
+    ATP-->>F4: Per-BU last run dates (Oracle ATP1 invoke)
+
+    opt BU has pending batches [ROUTER sc2]
+        loop FOR each BU batch  [processor_152 FOR loop]
+
+            Note right of F4: Assign: setreportrundate — determines date range for all 5 BIP reports<br/>ROUTER sc4: if BU report conditions met → run report calls<br/>After all 5 reports → updatelastrundate(BU, runDate)
+
+            rect rgb(255,235,255)
+            Note right of F4: ① BIPcallPOdetailReport scope [try t1]
+            F4->>BIP: BIPgetporeportdetails(runDate, BU) [SOAP1 — SOAP invoke]
+            BIP-->>F4: PO header/line reference data stream
+            Note right of F4: OIC stageFile read (segmented — processor_133)<br/>Transformer maps segment rows → ATP input
+            loop Segment rows from PO detail report [stageFile sf1 — processor_678]
+                F4->>ATP: loadporptdetaildata(segment rows) [Oracle ATP2]
+            end
+            critical BIPcallPOdetailReport fault
+                option CATCH_ALL raised
+                    F4->>F4: Email notification → ehStop
+            end
+            end
+
+            rect rgb(230,255,230)
+            Note right of F4: ② BIPcallSupplierReport scope [try t2]
+            F4->>BIP: BIPgetsupplierReport(runDate, BU) [SOAP2]
+            BIP-->>F4: Supplier master data stream
+            Note right of F4: OIC stageFile read (segmented — processor_255)
+            loop Segment rows from supplier report [stageFile sf5 — processor_585]
+                F4->>ATP: loadPOsupplierdet(rows) [Oracle ATP3]
+            end
+            critical BIPcallSupplierReport fault
+                option CATCH_ALL raised
+                    F4->>F4: Email notification → ehStop
+            end
+            end
+
+            rect rgb(255,250,220)
+            Note right of F4: ③ BIPCallglccReport scope [try t3]
+            F4->>BIP: BIPgetCOAglccReport(runDate, BU) [SOAP3]
+            BIP-->>F4: GL / Cost Center validation data stream
+            Note right of F4: OIC stageFile read (segmented — processor_301)
+            loop Segment rows from GLCC report [stageFile sf6 — processor_746]
+                F4->>ATP: loadCOAglccdetails(rows) [Oracle ATP4]
+            end
+            critical BIPCallglccReport fault
+                option CATCH_ALL raised
+                    F4->>F4: Email notification → ehStop
+            end
+            end
+
+            rect rgb(220,245,255)
+            Note right of F4: ④ BIPCallinvItemReport scope [try t4]
+            F4->>BIP: BIPgetInvItemReport(runDate, BU) [SOAP4]
+            BIP-->>F4: Inventory item master data stream
+            Note right of F4: OIC stageFile read (segmented — processor_375)
+            loop Segment rows from inv item report [stageFile sf7 — processor_791]
+                F4->>ATP: loadInvItemdetailsrpt(rows) [Oracle ATP5]
+            end
+            critical BIPCallinvItemReport fault
+                option CATCH_ALL raised
+                    F4->>F4: Email notification → ehStop
+            end
+            end
+
+            rect rgb(240,255,245)
+            Note right of F4: ⑤ BIPCallPOProjectDetail scope [try t7]
+            F4->>BIP: BIPgetPOProjectinfo(runDate, BU) [SOAP5]
+            BIP-->>F4: Project costing data stream
+            Note right of F4: OIC stageFile read (segmented — processor_2971)
+            loop Segment rows from PO project report [stageFile sf9 — processor_2888]
+                F4->>ATP: LoadPOProjectrpt(rows) [Oracle ATP6]
+            end
+            critical BIPCallPOProjectDetail fault
+                option CATCH_ALL raised
+                    F4->>F4: Email notification → ehStop
+            end
+            end
+
+            F4->>ATP: updatelastrundate(BU, runDate) [Oracle ATP7]
+
+        end
+    end
+
+    Note right of F4: Exit — continues to POValidationScope<br/>See drill/04b-validation-item-creation.mmd

@@ -1,0 +1,22 @@
+flowchart TD
+
+    subgraph INT1["① IFP_EAM_PO_BATCH_REPRO_INTEG  ·  No DB call (event relay)"]
+        A1([REST Trigger\nPOST /callbackreprocess\nParam: importid])
+        A1 --> A2[Transform\nMap importid to\nTRIGGERNEWPOBATCH payload]
+        A2 --> A3[[Publish App Event\nTRIGGERNEWPOBATCH]]
+        A3 --> A4([Stop])
+    end
+
+    A3 -. "consumed by IFP_EAM_PO_BATCH_PROCE_INTEG\nnormal batch processing resumes" .-> NORM[[Normal Batch Flow]]
+
+    subgraph INT2["② IFP_PO_REPROCES_INTEGRAT  ·  XXIFP_PO_REPROCESS_DATA"]
+        B1([REST Trigger\nPOST /poreprocess\nParams: PbatchID · PONumber])
+        B1 --> B2["TRY: ReprocessPOdata"]
+        B2 --> B3[Transform to DB params]
+        B3 --> B4[("ADMIN.XXIFP_POINBOUND_INT_PKG\n► XXIFP_PO_REPROCESS_DATA\nReset staging record status\nto allow re-validation")]
+        B4 --> B5[Transform to collocated payload]
+        B5 --> B6[[Invoke Collocated Integration\nrunvalidationchildintegration\nRe-runs validation + import]]
+        B6 --> B7([Stop])
+    end
+
+    

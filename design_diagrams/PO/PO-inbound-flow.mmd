@@ -1,0 +1,235 @@
+sequenceDiagram
+    autonumber
+    participant Sched as OIC Scheduler
+    participant F1 as F1·DATA_EXTRA
+    participant EAM as EAM System<br/>[REST/BASIC_AUTH]
+    participant ATP as Oracle ATP DB<br/>[JDBC_OVER_SSL]
+    participant AppEvt as OIC App Event Bus
+    participant F2 as F2·BATCH_PROCE
+    participant F3 as F3·STAG_DATA_LOAD
+    participant F4 as F4·VALIDA
+    participant BIP as Oracle BIP SOAP<br/>[SOAP/UsernameToken]
+    participant ERP as Oracle ERP Cloud<br/>[ERP Adapter + REST]
+    participant F5 as F5·IMPORT
+    participant F6 as F6·IMPOR_CALLB
+    participant F7 as F7·STATUS_EVENT
+    participant F8 as F8·STATU_UPDAT
+
+    rect rgb(230,245,255)
+    Note over Sched,AppEvt: ── PHASE 1: PO Data Extraction  (F1·DATA_EXTRA) ──
+    Sched->>F1: Schedule trigger [every 15 min, Asia/Calcutta TZ]
+    Note over F1: STITCH + ACTIVITY_STREAM_LOGGER (Logger1, ImportSetID)<br/>Assigns: ImportSetID, EAMtenant, EAMPOGridName, EmailNotification, EssJob_ParameterId
+    F1->>ATP: Insertintoextractloadtable(ImportSetID, OIC instance metadata)
+    F1->>ATP: POinboundbatchcreation(P_IMPORTID, P_OICINSTANCE_ID, P_INTG_USER)<br/>← Returns P_OUT_STATUS, P_ERROR_MSG
+
+    Note over F1,EAM: WHILE loop: lv_hdr_nextcursorposition ≠ "" (paginated REST GET)
+    loop Header grid pagination [IFP_EAMGridScreen_Details_Lookup applied in transform]
+        F1->>EAM: GET FetchHdrGridDetails(EAMPOGridName, cursor, EAMtenant)
+        EAM-->>F1: PO Header grid page + next cursor
+        F1->>ATP: EAMHdrGridInsert(header grid rows, ImportSetID)
+        Note over F1: Assign: update lv_hdr_nextcursorposition
+    end
+    Note over F1: CATCH_ALL → hdrinsertionexception(fault detail) → Email notification → STOP
+
+    Note over F1,EAM: WHILE loop: lv_line_nextcursorpositon [sic — typo in var name]
+    loop Line grid pagination [DVMs: IFP_EAMOrg_OraBU_Default_Lookup, IFP_EAMTo_OracleUOM_Mapping_Lookup]
+        F1->>EAM: GET FetchLineGridDetails(EAMPOGridName, cursor, EAMtenant)
+        EAM-->>F1: PO Line grid page + next cursor
+        F1->>ATP: EAMLineGridInsert(line grid rows, ImportSetID)
+        Note over F1: Assign: update lv_line_nextcursorpositon [sic]
+    end
+    Note over F1: CATCH_ALL → lineinsertionexception(fault detail) → Email notification → STOP
+
+    Note over F1: CONTENT_BASED_ROUTER: if batch creation succeeded
+    F1->>AppEvt: PUBLISH TRIGGERNEWPOBATCH [fire-and-forget TARGET role]<br/>(ImportSetID, OIC instance metadata → processor_395 STITCH mapping)
+    Note over F1: GLOBAL CATCH_ALL → Email notification → ehStop
+    end
+
+    rect rgb(255,245,230)
+    Note over AppEvt,F3: ── PHASE 2: Batchwise Dispatch  (F2·BATCH_PROCE) ──
+    AppEvt->>F2: SUBSCRIBE TRIGGERNEWPOBATCH [fire-and-forget consumer]
+    F2->>ATP: ponewbatchfetch(P_IMPORT_ID)<br/>← Returns list: BATCH_ID, BATCH_STATUS, BATCH_FILE_NAME, OICINSTNCE_ID [sic]
+
+    loop FOR each batch record in ponewbatchfetch result
+        F2->>ATP: updatebatchstatusasDraft(BATCH_ID) — set status = DRAFT
+        F2->>F3: COLLOCATED INVOKE: InvokePOStageloadintegration<br/>[PRESEEDED_COLLOCATED_CONN_1741 — synchronous, waits for reply]<br/>(BATCH_ID, pbatchId, poicintid)
+    end
+    Note over F2: GLOBAL CATCH_ALL → Email notification → ehStop
+    end
+
+    rect rgb(240,255,240)
+    Note over F3,F4: ── PHASE 3: ATP Stage Load  (F3·STAG_DATA_LOAD) ──
+    Note over F3: Triggered by F2 collocated invoke — REST receive via IFP_PO_OIC_REST_CONNEC
+    F3->>ATP: mainstageload(BATCH_ID, pbatchId) — splits batch into per-BU staging records<br/>← ATP procedure populates staging tables from EAM grid data
+    F3->>F4: COLLOCATED INVOKE: CallChildPOValidationIntegration<br/>[PRESEEDED_COLLOCATED_CONN_1741 — synchronous]<br/>(pbatchId, poicintid, tracking_var_3)
+    Note over F3: GLOBAL CATCH_ALL → Email notification → ehStop
+    end
+
+    rect rgb(255,240,255)
+    Note over F4,ERP: ── PHASE 4: Validation + Reference Data Load  (F4·VALIDA) ──
+    Note over F4: Triggered by F3 collocated invoke — REST receive via IFP_PO_OIC_REST_CONNEC
+    F4->>ATP: fecthBUbatchlastrundetails(BATCH_ID) — returns per-BU last run dates
+
+    loop FOR each BU batch [ROUTER: only if BU has pending batches]
+        Note over F4: Assign: setreportrundate (determines BIP report date range)
+        Note over F4: ROUTER: if BU conditions met → run all 5 BIP report calls
+        F4->>BIP: BIPgetporeportdetails(runDate, BU) — PO header/line reference data
+        Note over F4: stageFile read (segmented)
+        F4->>ATP: loadporptdetaildata(segment rows) — load PO detail reference into ATP
+
+        F4->>BIP: BIPgetsupplierReport(runDate, BU) — supplier master data
+        F4->>ATP: loadPOsupplierdet(rows)
+
+        F4->>BIP: BIPgetCOAglccReport(runDate, BU) — GL/Cost Center validation data
+        F4->>ATP: loadCOAglccdetails(rows)
+
+        F4->>BIP: BIPgetInvItemReport(runDate, BU) — inventory item master
+        F4->>ATP: loadInvItemdetailsrpt(rows)
+
+        F4->>BIP: BIPgetPOProjectinfo(runDate, BU) — project costing data
+        F4->>ATP: LoadPOProjectrpt(rows)
+
+        F4->>ATP: updatelastrundate(BU, runDate)
+    end
+
+    Note over F4,ERP: POValidationScope — runs validation stored procs
+    F4->>ATP: POdatavalidation(BATCH_ID) — cross-validates EAM data vs. ERP reference data
+    F4->>ATP: ItemcustomInsertioncall(BATCH_ID) — identify items needing ERP creation
+    F4->>ATP: GetMasterItemcreationData(BATCH_ID) → master item candidates
+
+    loop FOR each master item to create
+        F4->>ERP: CreateMasterItems(item attributes) [ERP Cloud adapter]
+        F4->>ATP: updateItemIDcreation(itemId, result)
+        Note over F4: CATCH_ALL → UpdateItemcreationError(ATP)
+    end
+
+    F4->>ATP: GetChildOrgItemcreationdetails(BATCH_ID) → child org item assignments
+    loop FOR each child org item
+        F4->>ERP: CreateChildItemOrg(itemId, orgCode) [ERP Cloud adapter]
+        F4->>ATP: updatechildItemcreation(result)
+        Note over F4: CATCH_ALL → updatecreateItemchilderror(ATP)
+    end
+
+    F4->>ATP: CallValidatePOItemproc(BATCH_ID) — final item validation
+    F4->>ATP: UpdateInprocessbatchstatus(BATCH_ID, 'IN_PROCESS')
+    F4->>F5: COLLOCATED INVOKE: CallChildImportInboundint<br/>[PRESEEDED_COLLOCATED_CONN_1741 — synchronous]<br/>(pbatchId, tracking_var_2, tracking_var_3)
+    Note over F4: REPLY to F3 caller — GLOBAL CATCH_ALL → Email notification → ehStop
+    end
+
+    rect rgb(255,250,220)
+    Note over F5,AppEvt: ── PHASE 5: FBDI Generation + ESS Job Submission  (F5·IMPORT) ──
+    Note over F5: Triggered by F4 collocated invoke — REST receive via IFP_PO_OIC_REST_CONNEC
+    F5->>ATP: fetchdistincprocrementbu(BATCH_ID) — returns distinct procurement BUs
+
+    Note over F5: FBIDIScope — ROUTER: if FBDI-mode batches exist
+    loop FOR each procurement BU
+        Note over F5: Assign: BU code, FBDI file name parameters
+        F5->>ERP: GET GetBUID(BU name) [ERP REST — IFP_PO_ORACL_ERP_REST_CONNE]
+        ERP-->>F5: BU internal ID
+        F5->>ERP: GET GETBUYER(BU) [ERP REST]
+        ERP-->>F5: Default buyer details
+        F5->>ATP: updatetrasferredprocessid(BATCH_ID, BU, status=TRANSFERRING)
+        Note over F5: Write 7 FBDI stage files (OIC internal stageFile operations):<br/>1. PO_HEADERS_INTERFACE_ALL.csv  2. PO_LINES_INTERFACE.csv<br/>3. PO_LINE_LOCATIONS_INTERFACE.csv  4. PO_DISTRIBUTIONS_INTERFACE_ALL.csv<br/>5. process_column.csv  6. process_data.csv  7. .properties file
+        F5->>ERP: POImportOrdersTOERP [ERP Cloud adapter — UCM upload + ESS submit]<br/>"Load Interface File for Import" → "Import Purchase Orders"
+        Note over ERP: ESS job is ASYNCHRONOUS — OIC does not wait for completion
+        F5->>ATP: updatetrasferredprocessid(BATCH_ID, BU, essRequestId)
+    end
+
+    Note over F5: APIbasedfetchdata — API-based change orders
+    F5->>ATP: GetAPIpodata(BATCH_ID)
+    F5->>ATP: GetAPIChangeData(BATCH_ID) → pending change orders
+    loop FOR each change order [if any]
+        F5->>ERP: updatechangeorder(PO header, change details) [ERP Cloud adapter]
+        F5->>ATP: updatepoheaderchageAPIstatus(result)
+        Note over F5: CATCH_ALL → UpdateAPIchangeError(ATP) + ACTIVITY_STREAM_LOGGER
+    end
+
+    F5->>ATP: gethdrcancelpo(BATCH_ID)
+    F5->>ATP: getpohdrcanceldata(BATCH_ID) → PO headers to cancel
+    loop FOR each cancel PO header [if any]
+        F5->>ERP: cancelpohdrapi(PO header) [ERP Cloud adapter]
+        F5->>ATP: updatecancelapiresult(result)
+        Note over F5: CATCH_ALL → updatecancelpohdeerror(ATP)
+    end
+
+    F5->>AppEvt: PUBLISH PUBLISH_EAMPOSTATUSUPDAT [fire-and-forget]<br/>(BATCH_ID, status=SUBMITTED — ESS job is running asynchronously)
+    Note over F5: GLOBAL CATCH_ALL → Email notification → ehStop
+    end
+
+    rect rgb(240,240,255)
+    Note over ERP,F6: ── PHASE 6: Import Result Processing  (F6·IMPOR_CALLB) ──
+    Note over F6: TRIGGER: ERP Cloud business event — ESS "Import Purchase Orders" job COMPLETES<br/>Connection: poimportorderscallback via IFP_PO_ORACL_ERP_CLOUD_CONNE
+    ERP->>F6: poimportorderscallback(DOCUMENTID, SUMMARYSTATUS, tracking_var_3)
+
+    Note over F6,BIP: ROUTER → Route 1 (New import results)
+    F6->>ATP: updateimportrequestid(BATCH_ID, requestId)
+    F6->>BIP: callBIPReport() — PO import summary report [SOAP]
+    Note over F6: stageFile read (segmented)
+    loop Segment rows from import summary report
+        F6->>ATP: insertImportDetailsintoATPDB(PODATA_RPT_OBJ_TAB, BATCH_ID)<br/>← P_PODATA_RPT_OBJ_TAB: PO_NUMBER, PO_HEADER_ID, LINE_NUM, HDR_DOC_STATUS, etc.
+    end
+    F6->>ATP: callImportDetailsProcedure(BATCH_ID)
+
+    F6->>BIP: callErrorReport() — PO import error report [SOAP]
+    Note over F6: stageFile read (segmented)
+    loop Segment rows from error report
+        F6->>ATP: insertpoerroratp(INTERFACE_HEADER_KEY, ERROR_MESSAGE, BATCH_ID, ...)<br/>← ERROR_MESSAGE capped at 1000 chars [known constraint]
+    end
+    F6->>ATP: POErrorcallProcedure(BATCH_ID)
+
+    Note over F6,BIP: ROUTER → Route 2 (Extended import detail reports)
+    F6->>ATP: updateimportrequestid2(BATCH_ID, requestId)
+    F6->>BIP: callImportDetailsReport() [SOAP]
+    F6->>ATP: poinserterroratp(rows)
+    F6->>ATP: POerrordetailsrpt(rows)
+    F6->>BIP: callImportDetailsErrorReport() [SOAP]
+    Note over F6: stageFile read (segmented)
+    loop Segment rows
+        F6->>ATP: insertImportDetailsError(rows)
+    end
+    F6->>ATP: callImportDetailsErrorProcedure(BATCH_ID)
+
+    F6->>ATP: FetchPOproecssdata(BATCH_ID) — fetch processed transaction summary
+    Note over F6: Notification: send processed transaction report to users (stageFile email)
+    F6->>AppEvt: PUBLISH PUBLISH_EAMPOSTATUSUPDAT [fire-and-forget]<br/>(BATCH_ID, status=COMPLETE or ERROR — actual ESS import results)
+    Note over F6: GLOBAL CATCH_ALL → Email notification → ehStop
+    end
+
+    rect rgb(230,255,245)
+    Note over AppEvt,F8: ── PHASE 7: EAM Status Writeback  (F7·STATUS_EVENT → F8·STATU_UPDAT) ──
+    AppEvt->>F7: SUBSCRIBE PUBLISH_EAMPOSTATUSUPDAT
+    Note over F7: Called TWICE per batch: once after F5 (SUBMITTED), once after F6 (COMPLETE/ERROR)
+    F7->>F8: COLLOCATED INVOKE: CallPOEAMUpdateStatusIntegration<br/>[PRESEEDED_COLLOCATED_CONN_1741 — synchronous]<br/>(PBatchID, p_Success_loadtype, p_Status_code)
+
+    Note over F8: Triggered by F7 — REST receive via IFP_PO_OIC_REST_CONNEC
+    Note over F8: Assigns: BATCH_ID, success/error type flags, error code
+
+    Note over F8,EAM: UpdateEAMSuccessStatus scope
+    F8->>ATP: GetSuccessPOs(BATCH_ID) → list of successfully imported POs
+    loop FOR each success PO [if any]
+        F8->>EAM: PUT UpdateEAMPOSuccessStatus(PO number, APPROVED status)<br/>[IFP_PO_EAM_REST_CONNEC — BASIC_AUTH]
+        F8->>ATP: SentEAMUpdate(BATCH_ID, PO record) — mark sent
+        loop Cancel lines within success PO [if any]
+            F8->>EAM: PUT UpdateCancelLineStatus(line, CANCELLED)<br/>[IFP_PO_EAM_REST_CONNEC]
+        end
+        F8->>ATP: Sent_EAMUpdate(BATCH_ID, record)
+        Note over F8: CATCH_ALL → ACTIVITY_STREAM_LOGGER (lg0)
+    end
+
+    Note over F8,EAM: UpdateErrorinEAMHexagon scope
+    F8->>ATP: getPOerrorrecords(BATCH_ID) → error records per header
+    loop FOR each error header [if any]
+        F8->>EAM: PUT EAMcallHdrErrorAPI(INTERFACE_HEADER_KEY, ERROR_CODE, ERROR_MSG)<br/>[IFP_PO_EAM_REST_CONNEC]
+        F8->>EAM: PUT UpdateEAMPOStatus(PO header, ERROR status)
+        F8->>ATP: UpdateSentEAM(header error sent flag)
+        Note over F8: CATCH → ACTIVITY_STREAM_LOGGER (lg4)
+
+        F8->>ATP: getpolineerrordetails(BATCH_ID, headerKey) → error lines for this header
+        loop FOR each error line [if any]
+            F8->>EAM: PUT EAMCallLineErrorAPI(line key, line error details)
+            F8->>ATP: SentEAMUpdate(line error sent)
+            Note over F8: CATCH → ACTIVITY_STREAM_LOGGER (lg3)
+        end
+    end
+    Note over F8: GLOBAL CATCH_ALL → Email notification → ehStop
+    end

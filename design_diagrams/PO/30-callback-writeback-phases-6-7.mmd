@@ -1,0 +1,143 @@
+%%  Tier 2 — Phases 6 · 7  |  Import Callback → EAM Status Writeback
+%%  Flows: F6·IMPOR_CALLB  F7·STATUS_EVENT  F8·STATU_UPDAT
+%%  Rendering: Mermaid v10.9+  |  sequenceDiagram
+%%  Drill-downs: drill/06a-callback-import-results.mmd
+%%               drill/08a-writeback-success-path.mmd  |  drill/08b-writeback-error-path.mmd
+%%  See also: 00-overview-topology.mmd
+
+sequenceDiagram
+    autonumber
+
+    box External Systems
+        participant ERP as Oracle ERP Cloud
+        participant BIP as Oracle BIP SOAP
+        participant EAM as EAM System
+    end
+    box OIC Integration Flows
+        participant F6 as F6·IMPOR_CALLB
+        participant F7 as F7·STATUS_EVENT
+        participant F8 as F8·STATU_UPDAT
+    end
+    box OIC Platform
+        participant AppEvt as OIC App Event Bus
+    end
+    box Oracle ATP DB
+        participant ATP as ATP DB
+    end
+
+    %% ─────────────────────────────────────────────────────────────────────────
+    rect rgb(240,240,255)
+    Note right of ERP: PHASE 6 · Import Result Processing  (F6·IMPOR_CALLB)<br/>Conn: IFP_PO_ORACL_ERP_CLOUD_CONNE (trigger) · IFP_PO_ORACL_BIP_SOAP_CONNE<br/>      IFP_PO_ATP_DB_CONNEC · APPLICATION_EVENT_CONNECTION<br/>Tracking: DOCUMENTID · SUMMARYSTATUS · tracking_var_3<br/>Drill-down: drill/06a-callback-import-results.mmd
+
+    Note right of ERP: TRIGGER — ERP Cloud business event<br/>ESS "Import Purchase Orders" job completion callback<br/>NOT an OIC AppEvent — external push from ERP
+
+    ERP->>F6: poimportorderscallback(DOCUMENTID, SUMMARYSTATUS, tracking_var_3)
+
+    Note right of F6: STITCH (processor_3679 · processor_3328 · processor_3389)<br/>Init assigns — BATCH_ID · requestId · segment counters<br/>Global vars: gv_importSetID · segment index vars
+
+    Note right of F6: ROUTER — 3 routes based on SUMMARYSTATUS / import type<br/>Routes 1 & 2 are mutually exclusive · see drill/06a for detail
+
+    alt Route 1 — New import results [sc0]
+        F6->>ATP: updateimportrequestid(BATCH_ID, requestId)
+        F6->>BIP: callBIPReport() — PO import summary [SOAP]
+        loop Segment rows — import summary
+            F6->>ATP: insertImportDetailsintoATPDB(PODATA_RPT_OBJ_TAB, BATCH_ID)
+        end
+        F6->>ATP: callImportDetailsProcedure(BATCH_ID)
+        F6->>BIP: callErrorReport() — PO import errors [SOAP]
+        loop Segment rows — error report
+            F6->>ATP: insertpoerroratp(INTERFACE_HEADER_KEY, ERROR_MESSAGE, BATCH_ID)<br/>⚠ ERROR_MESSAGE VARCHAR2(1000) — truncates long ERP error text
+        end
+        F6->>ATP: POErrorcallProcedure(BATCH_ID)
+    else Route 2 — Extended import detail reports [sc1]
+        F6->>ATP: updateimportrequestid2(BATCH_ID, requestId)
+        F6->>BIP: callImportDetailsReport() [SOAP]
+        F6->>ATP: poinserterroratp(rows)
+        F6->>ATP: POerrordetailsrpt(rows)
+        F6->>BIP: callImportDetailsErrorReport() [SOAP]
+        loop Segment rows — detail error report
+            F6->>ATP: insertImportDetailsError(rows)
+        end
+        F6->>ATP: callImportDetailsErrorProcedure(BATCH_ID)
+    else Route 3 — ESS status-only / no report [sc6]
+        F6->>ERP: DonloadZIPFile [ERP Cloud adapter — download result ZIP]
+        F6->>F6: Email notification (no importable data)
+    end
+
+    F6->>ATP: FetchPOproecssdata(BATCH_ID)
+    ATP-->>F6: Processed transaction summary
+    F6->>F6: Notification — processed transaction report email (stageFile)
+
+    F6->>AppEvt: PUBLISH PUBLISH_EAMPOSTATUSUPDAT [fire-and-forget]<br/>status=COMPLETE or ERROR — actual ESS import results
+
+    critical Global scope fault
+        option CATCH_ALL raised
+            F6->>F6: Email notification → ehStop
+    end
+    end
+    %% ─────────────────────────────────────────────────────────────────────────
+
+    rect rgb(230,255,245)
+    Note right of AppEvt: PHASE 7 · EAM Status Writeback  (F7·STATUS_EVENT → F8·STATU_UPDAT)<br/>⚠ This phase fires TWICE per batch:<br/>  Invocation 1 — from F5 PUBLISH (status=SUBMITTED, ESS still running)<br/>  Invocation 2 — from F6 PUBLISH (status=COMPLETE/ERROR, ESS done)<br/>Drill-downs: drill/08a-writeback-success-path.mmd · drill/08b-writeback-error-path.mmd
+
+    AppEvt->>F7: SUBSCRIBE PUBLISH_EAMPOSTATUSUPDAT<br/>Conn: APPLICATION_EVENT_CONNECTION
+
+    Note right of F7: Transformer maps PBatchID · p_Success_loadtype · p_Status_code → collocated payload
+
+    F7->>F8: COLLOCATED CallPOEAMUpdateStatusIntegration(PBatchID, p_Success_loadtype, p_Status_code)<br/>[PRESEEDED_COLLOCATED_CONN_1741 — synchronous]
+
+    Note right of F8: Triggered by F7 collocated invoke<br/>REST receive: poinboundmain via IFP_PO_OIC_REST_CONNEC<br/>Tracking: pbatchId · tracking_var_2 · tracking_var_3<br/>Init assigns — BATCH_ID · success/error flags · error code
+
+    Note right of F8: UpdateEAMSuccessStatus scope<br/>See drill/08a-writeback-success-path.mmd for full loop detail
+
+    F8->>ATP: GetSuccessPOs(BATCH_ID)
+    ATP-->>F8: Successfully imported PO list
+
+    opt Success POs exist [ROUTER: sc7]
+        loop FOR each success PO
+            F8->>EAM: PUT UpdateEAMPOSuccessStatus(PO number, APPROVED)<br/>[IFP_PO_EAM_REST_CONNEC — BASIC_AUTH]
+            F8->>ATP: SentEAMUpdate(BATCH_ID, PO record)
+            opt Cancel lines within this PO [ROUTER: sc0]
+                loop FOR each cancel line
+                    F8->>EAM: PUT UpdateCancelLineStatus(line, CANCELLED)
+                end
+            end
+            F8->>ATP: Sent_EAMUpdate(BATCH_ID, record)
+            critical Success writeback fault
+                option CATCH_ALL raised
+                    F8->>F8: ACTIVITY_STREAM_LOGGER (lg0)
+            end
+        end
+    end
+
+    Note right of F8: UpdateErrorinEAMHexagon scope<br/>See drill/08b-writeback-error-path.mmd for full nested loop detail
+
+    F8->>ATP: getPOerrorrecords(BATCH_ID)
+    ATP-->>F8: Error records per header
+
+    opt Error headers exist [ROUTER: sc6]
+        loop FOR each error header
+            F8->>EAM: PUT EAMcallHdrErrorAPI(INTERFACE_HEADER_KEY, ERROR_CODE, ERROR_MSG)<br/>[IFP_PO_EAM_REST_CONNEC]
+            F8->>EAM: PUT UpdateEAMPOStatus(PO header, ERROR)
+            F8->>ATP: UpdateSentEAM(header error sent flag)
+            critical Header error writeback fault
+                option CATCH_ALL raised
+                    F8->>F8: ACTIVITY_STREAM_LOGGER (lg4)
+            end
+            F8->>ATP: getpolineerrordetails(BATCH_ID, headerKey)
+            loop FOR each error line
+                F8->>EAM: PUT EAMCallLineErrorAPI(line key, line error details)
+                F8->>ATP: SentEAMUpdate(line error sent)
+                critical Line error writeback fault
+                    option CATCH_ALL raised
+                        F8->>F8: ACTIVITY_STREAM_LOGGER (lg3)
+                end
+            end
+        end
+    end
+
+    critical Global scope fault
+        option CATCH_ALL raised
+            F8->>F8: Email notification → ehStop
+    end
+    end

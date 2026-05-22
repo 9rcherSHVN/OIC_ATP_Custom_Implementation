@@ -1,0 +1,94 @@
+%%  Tier 3 · Drill-down — Phase 6 · Import Callback — Dual-Router BIP Report Processing
+%%  Flow: F6·IMPOR_CALLB  (IFP_PO_IMPOR_CALLB_16_FEB)
+%%  Scope: MainScope ROUTER — 3 mutually exclusive routes based on SUMMARYSTATUS
+%%  Rendering: Mermaid v10.9+  |  sequenceDiagram
+%%  Parent: 30-callback-writeback-phases-6-7.mmd
+
+sequenceDiagram
+    autonumber
+
+    box External Systems
+        participant ERP as Oracle ERP Cloud<br/>[IFP_PO_ORACL_ERP_CLOUD_CONNE]
+        participant BIP as Oracle BIP SOAP<br/>[IFP_PO_ORACL_BIP_SOAP_CONNE]
+    end
+    box OIC Integration Flows
+        participant F6 as F6·IMPOR_CALLB
+    end
+    box OIC Platform
+        participant AppEvt as OIC App Event Bus
+    end
+    box Oracle ATP DB
+        participant ATP as ATP DB<br/>[IFP_PO_ATP_DB_CONNEC]
+    end
+
+    Note right of ERP: TRIGGER — ERP Cloud business event (ESS job completion)<br/>NOT an OIC AppEvent. Pushed by ERP to OIC endpoint.<br/>⚠ If ESS job fails silently or ERP callback is not delivered,<br/>F6 never fires — no OIC-level timeout watchdog exists for this gap.
+
+    ERP->>F6: poimportorderscallback(DOCUMENTID, SUMMARYSTATUS, tracking_var_3)<br/>[poimportorderscallback via IFP_PO_ORACL_ERP_CLOUD_CONNE]
+
+    Note right of F6: Init — STITCH processor_3679 (ImportSetID mapping)<br/>Assigns: BATCH_ID · requestId · segment index counters<br/>Global vars: gv_importSetID · gv_segmentIndex · gv_errorSegmentIndex
+
+    alt Route 1 — New import results  [MainScope ROUTER sc0]
+        Note right of F6: STITCH processor_3328 before BIP call
+
+        F6->>ATP: updateimportrequestid(BATCH_ID, requestId) [Oracle ATP1]
+
+        F6->>BIP: callBIPReport() — PO import summary report [SOAP1]
+        BIP-->>F6: Import summary data stream
+        Note right of F6: Transformer → stageFile write (processor_143)<br/>stageFile read segmented (processor_206 sf2) → loop below
+        loop Segment rows — import summary report  [stageFile sf2]
+            F6->>ATP: insertImportDetailsintoATPDB(PODATA_RPT_OBJ_TAB, BATCH_ID) [Oracle ATP2]
+            Note right of F6: PODATA_RPT_OBJ_TAB fields:<br/>PO_NUMBER · PO_BU · PO_HEADER_ID · HDR_DOC_STATUS<br/>REQUEST_ID · PO_LINE_ID · LINE_NUM · LINE_STATUS · LOAD_STATUS<br/>ADDITIONALINFOx (1–20, each 4000 chars)
+        end
+        F6->>ATP: callImportDetailsProcedure(BATCH_ID) [Oracle ATP3]
+
+        F6->>BIP: callErrorReport() — PO import error report [SOAP3]
+        BIP-->>F6: Import error data stream
+        Note right of F6: Transformer → stageFile write (processor_380)<br/>stageFile read segmented (processor_501 sf6) → loop below
+        loop Segment rows — error report  [stageFile sf6]
+            F6->>ATP: insertpoerroratp(INTERFACE_HEADER_KEY, ERROR_MESSAGE, BATCH_ID, ...)<br/>[Oracle ATP4]
+            Note right of F6: ⚠ ERROR_MESSAGE is VARCHAR2(1000)<br/>Long ERP error messages are silently truncated.<br/>ADDITIONALINFOx fields (1–10, each 4000 chars) carry extended detail<br/>— but only if explicitly mapped in XSLT.
+        end
+        F6->>ATP: POErrorcallProcedure(BATCH_ID) [Oracle ATP5]
+
+    else Route 2 — Extended import detail reports  [MainScope ROUTER sc1]
+        Note right of F6: STITCH processor_3389 before BIP call
+
+        F6->>ATP: updateimportrequestid2(BATCH_ID, requestId) [Oracle ATP6]
+
+        F6->>BIP: callImportDetailsReport() — detailed import results [SOAP2]
+        BIP-->>F6: Detailed import data stream
+        Note right of F6: stageFile write (processor_162) → stageFile read segmented (processor_222 sf3)
+        loop Segment rows — import detail report  [stageFile sf3]
+            F6->>ATP: poinserterroratp(rows) [Oracle ATP7]
+        end
+        F6->>ATP: POerrordetailsrpt(rows) [Oracle ATP8]
+
+        F6->>BIP: callImportDetailsErrorReport() — detailed error results [SOAP4]
+        BIP-->>F6: Detailed error data stream
+        Note right of F6: stageFile write (processor_447) → stageFile read segmented (processor_549 sf7)
+        loop Segment rows — detail error report  [stageFile sf7]
+            F6->>ATP: insertImportDetailsError(rows) [Oracle ATP9]
+        end
+        F6->>ATP: callImportDetailsErrorProcedure(BATCH_ID) [Oracle ATP10]
+
+    else Route 3 — ESS status-only / no processable report  [MainScope ROUTER sc6]
+        F6->>ERP: DonloadZIPFile [Oracle ERP Cloud2 — ERP Cloud adapter — download result ZIP]
+        ERP-->>F6: ZIP file content
+        Note right of F6: stageFile write of ZIP content (processor_4619)<br/>Notification sent to users — no ATP insert for this route
+        F6->>F6: Notification (processor_4664) — no importable data
+    end
+
+    Note right of F6: ProcessedtrxReport scope [try t5] — runs after all routes
+
+    F6->>ATP: FetchPOproecssdata(BATCH_ID) [Oracle ATP11]
+    ATP-->>F6: Processed transaction summary
+
+    Note right of F6: stageFile write: summary report body (processor_2008 sf8)<br/>stageFile write: summary report attachment (processor_2103 sf9)
+    F6->>F6: Notification (processor_2145) — processed transaction report email to users
+
+    F6->>AppEvt: PUBLISH PUBLISH_EAMPOSTATUSUPDAT [fire-and-forget]<br/>status=COMPLETE or ERROR — triggers F7→F8 writeback
+
+    critical Global scope fault
+        option CATCH_ALL raised  [processor_1840]
+            F6->>F6: Email notification (processor_1845) → ehStop
+    end
