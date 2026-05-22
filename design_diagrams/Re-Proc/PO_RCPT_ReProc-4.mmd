@@ -1,0 +1,85 @@
+flowchart LR
+
+    subgraph INT4["④ IFP_PO_RECEI_IMPOR_CALLB_REPRO  ·  4 procedures + 2 events"]
+
+        %% =========================================================
+        %% Procedure 1: Entry + priority batch event + routing
+        %% =========================================================
+        subgraph P1["Procedure 1 — Entry, priority batch lookup, and routing"]
+            direction LR
+            D1([REST Trigger<br/>POST /callbackreprocess<br/>Params: loadrequestid · importrequestid])
+            D2["Assign common vars<br/>Resolve via IFP_Common_Utility_Lookup"]
+            D3["TRY: ScopePrioritywisebatch"]
+            D4[("ADMIN.XXIFP_PORCPT_INB_INT_PKG<br/>► XXIFP_GET_PRIORITYWISE_NEWBATCH<br/>Get next priority batch")]
+            D5{"P_NEW_BATCH_ID > 0?"}
+            D6[Transform to event payload]
+            D7[[Publish App Event<br/>CALLPRIORITYWISEPORCPT]]
+            D8[Activity Stream Log]
+            D9{"loadrequestid ≠ ''<br/>OR importrequestid ≠ ''"}
+            D10[("ADMIN.XXIFP_PORCPT_INB_INT_PKG<br/>► XXIFP_UPDATE_IMPORT_REQUESTID<br/>Stamp import request ID<br/>into staging receipt record")]
+            D11[Assign: var_batch_id]
+
+            D1 --> D2 --> D3 --> D4 --> D5
+            D5 -->|Yes — next batch exists| D6 --> D7 --> D9
+            D5 -->|No — no next batch| D8 --> D9
+            D9 -->|Yes — IDs present| D10 --> D11
+        end
+
+        %% =========================================================
+        %% Procedure 2: Receipt error detail report
+        %% =========================================================
+        subgraph P2["Procedure 2 — Receipt Error Detail Report"]
+            direction LR
+            D12[[BIP SOAP: callBIPReport<br/>Fetch Receipt Error Detail Report]]
+            D13["Transform<br/>+ Stage File Write<br/>(error report content)"]
+            D14{"Error file<br/>size > 25 bytes?"}
+            D15["Stage File Read<br/>(segmented loop over report rows)"]
+            D16[("ADMIN.XXIFP_PORCPT_INB_INT_PKG<br/>► insertpoerroratp<br/>Insert error rows into ATP staging")]
+            D17[("ADMIN.XXIFP_PORCPT_INB_INT_PKG<br/>► XXIFP_PORCPT_UPDATE_ERROR_MSG<br/>Write error messages to<br/>receipt staging record")]
+            D18[[BIP SOAP: callImportDetailsReport<br/>Fetch Receipt Import Details Report]]
+
+            D12 --> D13 --> D14
+            D14 -->|Yes — errors exist| D15 --> D16 --> D17 --> D18
+            D14 -->|No — empty report| D18
+        end
+
+        %% =========================================================
+        %% Procedure 3: Receipt import details report
+        %% =========================================================
+        subgraph P3["Procedure 3 — Receipt Import Details Report"]
+            direction LR
+            D19["Transform<br/>+ Stage File Write<br/>(import details content)"]
+            D20{"Import details<br/>file size > 25 bytes?"}
+            D21["Stage File Read<br/>(segmented loop over detail rows)"]
+            D22[("ADMIN.XXIFP_PORCPT_INB_INT_PKG<br/>► insertImportDetailsintoATPDB<br/>Insert import detail rows into ATP")]
+            D23[("ADMIN.XXIFP_PORCPT_INB_INT_PKG<br/>► XXIFP_PORCPT_UPDATE_IMPORT_DETAILS<br/>Finalise import detail records")]
+            D24[Transform to EAM Hexagon payload]
+
+            D19 --> D20
+            D20 -->|Yes — details exist| D21 --> D22 --> D23 --> D24
+            D20 -->|No — empty report| D24
+        end
+
+        %% =========================================================
+        %% Procedure 4: EAM Hexagon writeback event
+        %% =========================================================
+        subgraph P4["Procedure 4 — EAM Hexagon writeback event"]
+            direction LR
+            D25[[Publish App Event<br/>UPDATEERRORI NEAMHEXAGON<br/>always executes]]
+            D26([Stop])
+
+            D25 --> D26
+        end
+
+        %% =========================================================
+        %% Cross-procedure routing preserving original logic
+        %% =========================================================
+        D11 --> D12
+        D18 --> D19
+        D24 --> D25
+        D9 -->|No — both empty, skip router| D24
+
+    end
+
+    D7 -. "consumed by IFP_EAM_PO_RECE_BATC_PROC_INTE" .-> BATC2[[Normal Receipt Batch Processing]]
+    D25 -. "consumed by IFP_EAM_UPDA_MESS_IN_EAM_HEXA" .-> HEXA2[[Normal EAM Hexagon Writeback]]
