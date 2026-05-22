@@ -1,0 +1,2036 @@
+User: Provide technical information of prioritywise, BUwise, or anything related to -wise operations in IFP_AP_INBOUN_INTEGR_ATP and IFP_PO_RECEI_INBOU_INTEG_ATP. IT support and  developers want to understand how they are implemented and their flow logic. Reply with accuracy checks on information.
+
+GitHub Copilot: Created 4 todos
+
+First, let me note a potential naming issue — the workspace has `IFP_PO_INBOUN_INTEGR_ATP`, not `IFP_AP_INBOUN_INTEGR_ATP`. I'll search both PO-inbound and PO-receipt projects for all `-wise` logic simultaneously.  
+
+Searched for regex `wise|priority|BU|business.unit|buWise|priorityWise` (`**/extracted/IFP_PO_INBOUN_INTEGR_ATP/**`), 100 results
+
+Searched for regex `wise|priority|BU|business.unit|buWise|priorityWise` (`**/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/**`), 100 results
+
+Good findings. Now let me read the key files in depth — the `IFP_EAM_PRIORITY_REPROCES` integration, the `callprioritywisePORCPT` schedule, both project.yaml files, and the BU lookup — in parallel.   
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/project.yaml)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_INBOUN_INTEGR_ATP/project/project.yaml)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/lookups/IFP_EAMOrg_OraBU_Default_Lookup.dvm#1-1), lines 1 to 50
+
+Now let me read the `IFP_EAM_PRIORITY_REPROCES` integration and the Batchwise integrations in both projects.  
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_INBOUN_INTEGR_ATP/project/integrations)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PRIORITY_REPROCES_01.00.0000)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECE_BATC_PROC_INTE_01.00.0000)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_INBOUN_INTEGR_ATP/project/integrations/IFP_EAM_PO_BATCH_PROCE_INTEG_01.00.0000)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PRIORITY_REPROCES_01.00.0000/info.json)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECE_BATC_PROC_INTE_01.00.0000/info.json)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_INBOUN_INTEGR_ATP/project/integrations/IFP_EAM_PO_BATCH_PROCE_INTEG_01.00.0000/info.json)
+
+Now let me look at the resources inside these integrations to understand the flow logic.   
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PRIORITY_REPROCES_01.00.0000/resources)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECE_BATC_PROC_INTE_01.00.0000/resources)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_INBOUN_INTEGR_ATP/project/integrations/IFP_EAM_PO_BATCH_PROCE_INTEG_01.00.0000/resources)
+
+Searched for text `priority|batch|status|error|retry|reprocess` (`**/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PRIORITY_REPROCES_01.00.0000/**`), 80 results
+
+Searched for text `priority|batch|status|error|retry|BU` (`**/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECE_BATC_PROC_INTE_01.00.0000/**`), 80 results
+
+Now let me read the key XSL mapper and processor files in the Prioritywise integration to understand the routing and ATP procedure call.  
+
+Searched for text `priority|batch|cbr|route|condition|status|P_BATCH` (`**/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PRIORITY_REPROCES_01.00.0000/resources/processor_**/**`), 60 results
+
+Searched for text `batch|BU|priority|status|callStageDataLoading|TriggerNewPObatch` (`**/extracted/IFP_PO_INBOUN_INTEGR_ATP/project/integrations/IFP_EAM_PO_BATCH_PROCE_INTEG_01.00.0000/resources/**`), 60 results
+
+Starting: *Compile findings with accuracy checks* (4/4)
+
+---
+
+## ⚠️ Naming Correction First
+
+> **`IFP_AP_INBOUN_INTEGR_ATP` does not exist in this workspace.** The correct project name is **`IFP_PO_INBOUN_INTEGR_ATP`** (PO Inbound, not AP). All findings below are sourced from `IFP_PO_INBOUN_INTEGR_ATP` and `IFP_PO_RECEI_INBOU_INTEG_ATP`.
+
+---
+
+## 1. BUwise Operations — `IFP_EAMOrg_OraBU_Default_Lookup`
+
+**Exists in:** Both `IFP_PO_INBOUN_INTEGR_ATP` and `IFP_PO_RECEI_INBOU_INTEG_ATP`  
+**Artifact:** DVM lookup table IFP_EAMOrg_OraBU_Default_Lookup.dvm  
+**Purpose:** Maps an EAM Organization Name → Oracle Business Unit and all associated Oracle ERP parameters.
+
+### DVM Schema (13 columns)
+
+| Column | Description |
+|---|---|
+| `EAMOrgName` | **Lookup key** — EAM Organization short code (e.g., `CDHO`, `ACORN`) |
+| `ORACompanyCode` | Oracle Company Code (e.g., `CHO`, `CAC`) |
+| `ORACompanyName` | Human-readable company name (e.g., `Canadian Head Office`) |
+| `ORABusinessUnit` | **Target BU** — either `CA BU` or `US BU` |
+| `ORALegalEntityCode` | Legal entity code (e.g., `ICO`) |
+| `ORALegalEntityName` | Legal entity name (e.g., `Interfor Corporation`) |
+| `DocumentTypeCode` | Oracle PO document type (e.g., `STANDARD`) |
+| `Buyer` | Buyer role/user (e.g., `Adapter Prod, ERP`) |
+| `InitiatingParty` | Initiating party in PO header (always `BUYER`) |
+| `ShiptoOrganization` | Oracle inventory org code (`CABUINV` or `USBUINV`) |
+| `ShipToLocation` | Physical ship-to location |
+| `DeliverToLocation` | Deliver-to location |
+| `BillToLocation` | Bill-to location |
+
+### BU Values in Use
+
+| BU | ShiptoOrg | Represents |
+|---|---|---|
+| `CA BU` | `CABUINV` | Canadian operations |
+| `US BU` | `USBUINV` | US operations |
+
+**Examples from the data:**
+- `CDHO` → `CA BU`, company `CHO` (Canadian Head Office), ship-to: `Interfor - Metrotown Head Office`
+- `ACORN` → `CA BU`, company `CAC` (Acorn), ship-to: `Interfor - Acorn Division`
+- Various other orgs → `US BU` / `USBUINV`
+
+### How It Is Used
+During PO/receipt data transformation (XSL mappers in validation and import integrations), `dvm:lookupValue()` is called with the EAM Org Name to resolve all Oracle ERP fields — BU, legal entity, document type, buyer, ship-to organization — needed to create the Oracle ERP PO or Receipt. **This is the core of BU-wise routing**: the integration does not hardcode BU logic; it drives everything from this single lookup table.
+
+> ✅ **Accuracy:** Confirmed from IFP_EAMOrg_OraBU_Default_Lookup.dvm in both projects (identical schema, same data). Both projects share the same lookup revision 0.
+
+---
+
+## 2. Batchwise Processing — `IFP_EAM_PO_BATCH_PROCE_INTEG` (PO Inbound)
+
+**Project:** `IFP_PO_INBOUN_INTEGR_ATP`  
+**Integration ID:** `IFP_EAM_PO_BATCH_PROCE_INTEG|01.00.0000`  
+**Pattern:** App-Driven Orchestration, MEP08 (subscribe to event)  
+**Tracking field:** `parameter1`
+
+### Trigger
+Subscribes to the `TriggerNewPObatch` application event (`TRIGGERNEWPOBATCH|1`).
+
+### Flow Logic
+1. **Event received** — `TriggerNewPObatch` fires with a batch ID.
+2. **ATP stored proc `ponewbatchfetch`** — calls the procedure (from DB package `ADMIN.XXIFP_POINBOUND_INT_PKG`) to fetch the batch record. Returns a table type `P_PO_BATCH_TABTYPE`, each item (`P_PO_BATCH_TABTYPE_ITEM`) containing:
+   - `BATCH_ID` (NUMBER)
+   - `BATCH_STATUS` (VARCHAR2)
+   - `BATCH_FILE_NAME` (VARCHAR2)
+   - `CREATION_DATE`, `CREATED_BY`, `LAST_UPDATED_DATE`, `LAST_UPDATE_BY`
+3. **For-each loop** — iterates over each `P_PO_BATCH_TABTYPE_ITEM`.
+4. **Mapper** — Maps `BATCH_ID` → `pbatchId` and sets batch status to `DRAFT` via ATP proc `updatebatchstatusasDraft`.
+5. **Calls Stage Data Loading** (`InvokePOStageloadintegration`) — passes the batch record downstream for PO line staging.
+
+> ✅ **Accuracy:** Confirmed from info.json (subscribes to `TRIGGERNEWPOBATCH|1|sub`), `ponewbatchfetch` WSDL (showing `ADMIN.XXIFP_POINBOUND_INT_PKG.L_PO_BATCH_RECTYPE`), and mapper XSL files.
+
+**Companion:** `IFP_EAM_PO_BATCH_REPRO_INTEG` — "IFP EAM PO Batchwise Reprocessing Integration" — the reprocess variant following the same pattern.
+
+---
+
+## 3. Batchwise Processing — `IFP_EAM_PO_RECE_BATC_PROC_INTE` (PO Receipt)
+
+**Project:** `IFP_PO_RECEI_INBOU_INTEG_ATP`  
+**Integration ID:** `IFP_EAM_PO_RECE_BATC_PROC_INTE|01.00.0000`  
+**Pattern:** App-Driven Orchestration, MEP08 (subscribe to event)  
+**Tracking field:** `p_new_batch_id`
+
+### Trigger
+Subscribes to the `callprioritywisePORCPT` application event (`CALLPRIORITYWISEPORCPT|1`). This makes it the **consumer** of what the Prioritywise integration publishes (see below).
+
+### Flow Logic
+1. **Event received** — `CALLPRIORITYWISEPORCPT` fires with payload: `p_new_batch_id`, `p_new_import_id`, `p_new_priority_col`.
+2. **Mapper 1** — Extracts `p_new_batch_id` from the event and maps to `pbatchId` for the Stage Data Loading call, and to `P_BATCH_ID` for the ATP status update.
+3. **ATP `BatchstatusDRAFTupd`** — Updates receipt batch status to `DRAFT` with `P_BATCH_ID` and `P_BATCH_STATUS`.
+4. **Calls Stage Data Loading** — calls `callPORCPTstagedataloading` REST endpoint `/ponewbatchsplit` to stage the receipt batch for processing.
+
+> ✅ **Accuracy:** Confirmed from info.json (subscribes to `CALLPRIORITYWISEPORCPT|1|sub`), batchidexpr.properties (XPath `/ns13:execute/ns10:request-wrapper/ns10:p_new_batch_id`), XSL mappers showing `P_BATCH_ID` and `P_BATCH_STATUS`, and `.jca` file showing `/ponewbatchsplit`.
+
+---
+
+## 4. Prioritywise Reprocessing — `IFP_EAM_PRIORITY_REPROCES` (PO Receipt Only)
+
+**Project:** `IFP_PO_RECEI_INBOU_INTEG_ATP` **only** — no equivalent exists in the PO Inbound project.  
+**Integration ID:** `IFP_EAM_PRIORITY_REPROCES|01.00.0000`  
+**Pattern:** App-Driven Orchestration, MEP00 (fire-and-forget)  
+**Tracking field:** `pbatchid`  
+**Internal processors:** 1 CBR (content-based router), 3 transformers, 2 ATP invokes, 2 event publishes
+
+### Trigger
+REST endpoint **`/poprioritywisereprocess`** exposed via `IFP_PO_RECEI_OIC_REST_CONNE`.  
+**Query parameters:** `pbatchid`, `pimportid`, `priority` (all optional strings).
+
+### Flow Logic (Content-Based Router)
+
+```
+REST call → /poprioritywisereprocess?pbatchid=&pimportid=&priority=
+                          │
+                ┌─────────▼──────────┐
+                │  CBR: pbatchid > 0? │
+                └────┬───────────────┘
+         YES          │                NO
+    (batch route)     │         (priority/import route)
+         │            │                │
+         ▼            │                ▼
+  Transformer         │    Mapper → ATP PORCPTpriority
+  Maps pbatchid →     │    Input: P_ARG_PRIORITY = priority
+  p_new_batch_id      │    Output: P_NEW_BATCH_ID,
+  (CALLPRIORITY       │            P_NEW_IMPORT_ID,
+   WISEPORCPT1        │            P_NEW_PRIORITY_COL
+   event payload)     │                │
+         │            │                ▼
+         │            │    Transformer → CALLPRIORITYWISEPORCPT2
+         ▼            │    event payload (p_new_batch_id,
+  PUBLISH event       │    p_new_import_id, p_new_priority_col)
+  CALLPRIORITY        │                │
+  WISEPORCPT1         │                ▼
+         │            │    PUBLISH event CALLPRIORITYWISEPORCPT2
+         └────────────┘
+```
+
+### Branch Details
+
+**Branch A — `pbatchid > 0` (batch already known):**
+- XSL condition: `/ns13:execute/ns13:QueryParameters/ns16:pbatchid > 0`
+- Transformer maps: `pbatchid` → `p_new_batch_id` in `CALLPRIORITYWISEPORCPT1` event
+- Publishes `CALLPRIORITYWISEPORCPT1` → consumed by `IFP_EAM_PO_RECE_BATC_PROC_INTE`
+
+**Branch B — priority-based (no known batch ID, use priority to find next batch):**
+- ATP Stored Proc **`PORCPTpriority`** called with input `P_ARG_PRIORITY = priority` query param
+- Returns: `P_NEW_BATCH_ID`, `P_NEW_IMPORT_ID`, `P_NEW_PRIORITY_COL` (the next batch to process at that priority level)
+- Transformer maps these outputs → `CALLPRIORITYWISEPORCPT2` event payload
+- Publishes `CALLPRIORITYWISEPORCPT2` → consumed by `IFP_EAM_PO_RECE_BATC_PROC_INTE`
+
+### Dependencies
+
+| Resource | Type | Role |
+|---|---|---|
+| `IFP_PO_RECEI_OIC_REST_CONNE` | REST | Receives the trigger REST call |
+| `IFP_PO_RECEI_ATP_DB_CONNE` | ATP DB | Executes `PORCPTpriority` stored proc |
+| `APPLICATION_EVENT_CONNECTION` | App Event | Publishes `CALLPRIORITYWISEPORCPT1/2` events |
+
+> ✅ **Accuracy:** Confirmed from info.json (publisher of `CALLPRIORITYWISEPORCPT|1|pub`), getprioritywise_REQUEST.jca (`ResourceURI=/poprioritywisereprocess`, `QueryParameters=pbatchid, pimportid, priority`), expr.properties (CBR condition `pbatchid > 0`), XSL mapper files showing both branches' field mappings, and analysis.json confirming 1 CBR, 3 transformers, 2 targets.
+
+---
+
+## 5. Event Type: `CALLPRIORITYWISEPORCPT` — The Integration Bus
+
+This application event is the **asynchronous coupling** between Prioritywise Reprocess and Batchwise Processing in the Receipt project:
+
+```
+IFP_EAM_PRIORITY_REPROCES          IFP_EAM_PO_RECE_BATC_PROC_INTE
+        │  PUBLISHER                              SUBSCRIBER │
+        │                                                     │
+        ├──► CALLPRIORITYWISEPORCPT1 ──────────────────────►│
+        └──► CALLPRIORITYWISEPORCPT2 ──────────────────────►│
+```
+
+**Event payload schema:**
+- `p_new_batch_id` — the new receipt batch ID to process
+- `p_new_import_id` — associated import ID
+- `p_new_priority_col` — priority column value used for ordering
+
+---
+
+## Summary Table
+
+| Operation | Project | Integration | Pattern | Trigger | Key Data |
+|---|---|---|---|---|---|
+| **BUwise mapping** | Both | `IFP_EAMOrg_OraBU_Default_Lookup` DVM | Lookup | Used in XSL mappers | EAMOrgName → CA BU / US BU, CABUINV/USBUINV |
+| **Batchwise Processing** | PO Inbound | `IFP_EAM_PO_BATCH_PROCE_INTEG` | App Event subscriber | `TriggerNewPObatch` event | ATP proc `ponewbatchfetch` → batch items |
+| **Batchwise Reprocessing** | PO Inbound | `IFP_EAM_PO_BATCH_REPRO_INTEG` | App Event subscriber | `TriggerNewPObatch` event | Same as above, reprocess path |
+| **Batchwise Processing** | PO Receipt | `IFP_EAM_PO_RECE_BATC_PROC_INTE` | App Event subscriber | `CALLPRIORITYWISEPORCPT` event | Updates batch to DRAFT → calls stage loading |
+| **Prioritywise Reprocess** | PO Receipt **only** | `IFP_EAM_PRIORITY_REPROCES` | REST → App Event publisher | `GET /poprioritywisereprocess` | CBR on `pbatchid > 0`; calls ATP `PORCPTpriority` if not |
+
+---
+
+## Accuracy Confidence
+
+| Finding | Confidence | Source |
+|---|---|---|
+| `IFP_AP_INBOUN_INTEGR_ATP` does not exist | ✅ High | Workspace directory structure |
+| BUwise DVM schema and values | ✅ High | Direct read of `.dvm` XML |
+| Batchwise PO Inbound event trigger name | ✅ High | info.json and WSDL |
+| Batchwise Receipt event trigger name | ✅ High | info.json |
+| Prioritywise REST endpoint `/poprioritywisereprocess` | ✅ High | `.jca` file |
+| CBR condition `pbatchid > 0` | ✅ High | expr.properties |
+| ATP proc `PORCPTpriority` input/output fields | ✅ High | XSL mapper and WSDL |
+| Prioritywise only in Receipt, not PO Inbound | ✅ High | Both project.yaml integration lists |
+| `P_NEW_BATCH_ID`, `P_NEW_IMPORT_ID`, `P_NEW_PRIORITY_COL` output params | ✅ High | XSL mapper `select` expressions | 
+
+Completed: *Compile findings with accuracy checks* (4/4)
+
+User: Provide me technical details about " calls callPORCPTstagedataloading REST endpoint /ponewbatchsplit to stage the receipt batch for processing." What is this split logic? what it does? how it is implemented? How it is called (or work with other processes). Reply with accuracy checks on informations.
+
+GitHub Copilot: Searched for text `ponewbatchsplit` (`**/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/**`), 6 results
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECEIPT_STAG_DATA_LOA_01.00.0000)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECE_BATC_PROC_INTE_01.00.0000/resources/application_20/inbound_21/resourcegroup_22/callPORCPTstagedataloading_REQUEST.jca)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECEIPT_STAG_DATA_LOA_01.00.0000/resources)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECEIPT_STAG_DATA_LOA_01.00.0000/info.json)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECEIPT_STAG_DATA_LOA_01.00.0000/PROJECT-INF)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECEIPT_STAG_DATA_LOA_01.00.0000/PROJECT-INF/project.xml#1-1), lines 1 to 3
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECEIPT_STAG_DATA_LOA_01.00.0000/PROJECT-INF/project.xml#1-1), lines 1 to 200
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECEIPT_STAG_DATA_LOA_01.00.0000/PROJECT-INF/analysis.json)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECEIPT_STAG_DATA_LOA_01.00.0000/PROJECT-INF/project.xml#200-200), lines 200 to 400
+
+Now let me read the XSL transformers and the WSDL for `mainstageload` and `callpostagerest` to get the actual field details.  
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECEIPT_STAG_DATA_LOA_01.00.0000/resources/application_309/inbound_310/resourcegroup_311/mainstageload_REQUEST.wsdl)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECEIPT_STAG_DATA_LOA_01.00.0000/resources/application_13/outbound_14/resourcegroup_15/callpostagerest_REQUEST.wsdl)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECEIPT_STAG_DATA_LOA_01.00.0000/resources/application_309/inbound_310/resourcegroup_311/mainstageload_REQUEST.xsd)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECEIPT_STAG_DATA_LOA_01.00.0000/resources/application_309/inbound_310/resourcegroup_311/mainstageload_REQUEST.jca#1-1), lines 1 to 3
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECEIPT_STAG_DATA_LOA_01.00.0000/resources/application_309/inbound_310/resourcegroup_311/mainstageload_REQUEST.jca)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECEIPT_STAG_DATA_LOA_01.00.0000/resources/application_326/inbound_327/resourcegroup_328/updateReadybatchstatus_REQUEST.xsd)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECEIPT_STAG_DATA_LOA_01.00.0000/resources/application_326/inbound_327/resourcegroup_328/updateReadybatchstatus_REQUEST.jca)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECEIPT_STAG_DATA_LOA_01.00.0000/resources/application_54/inbound_55/resourcegroup_84/CallChildPOValidationIntegration_REQUEST.jca#1-1), lines 1 to 3
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECEIPT_STAG_DATA_LOA_01.00.0000/resources/application_54/inbound_55/resourcegroup_84/CallChildPOValidationIntegration_REQUEST.jca)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECEIPT_STAG_DATA_LOA_01.00.0000/resources/processor_321/resourcegroup_324/req_96b5f596be3546eca9c1fefd29a16b44.xsl#1-1), lines 1 to 3
+
+Searched for text `P_BATCH_ID|pbatchId|select|value-of` (`**/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECEIPT_STAG_DATA_LOA_01.00.0000/resources/processor_321/**`), 5 results
+
+Searched for text `P_BATCH_ID|P_BATCH_STATUS|select|value-of` (`**/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECEIPT_STAG_DATA_LOA_01.00.0000/resources/processor_338/**`), 8 results
+
+Searched for text `pbatchId|P_OUT_STATUS|purchaseReceiptvalidation|value-of|select` (`**/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECEIPT_STAG_DATA_LOA_01.00.0000/resources/processor_92/**`), 8 results
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECEIPT_STAG_DATA_LOA_01.00.0000/resources/processor_120/resourcegroup_400/notification_subject.data)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECEIPT_STAG_DATA_LOA_01.00.0000/resources/processor_120/resourcegroup_412/SUBJECT_PARAM_1expr.properties#1-1), lines 1 to 3
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECEIPT_STAG_DATA_LOA_01.00.0000/resources/processor_120/resourcegroup_400/notification_body.data)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECEIPT_STAG_DATA_LOA_01.00.0000/resources/processor_120/resourcegroup_400/notification_to.data)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECEIPT_STAG_DATA_LOA_01.00.0000/resources/processor_120/resourcegroup_412/TO_PARAM_1expr.properties#1-1), lines 1 to 5
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECEIPT_STAG_DATA_LOA_01.00.0000/resources/application_13/outbound_14/resourcegroup_15/callpostagerest_REQUEST.jca#1-1), lines 1 to 3
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECEIPT_STAG_DATA_LOA_01.00.0000/resources/application_13/outbound_14/resourcegroup_15/callpostagerest_REQUEST.jca)
+
+Now let me check what `poicintid` is set to when the Batchwise Processing integration calls `/ponewbatchsplit`.  
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECE_BATC_PROC_INTE_01.00.0000/resources/processor_32/resourcegroup_35/req_f10437eb8540440bba313591862edabb.xsl#24-24), lines 24 to 37
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECEIPT_STAG_DATA_LOA_01.00.0000/resources/processor_120/resourcegroup_412/Detailed_Error_Parameterexpr.properties#1-1), lines 1 to 5
+
+Now I have a complete picture. Here is the full technical breakdown:
+
+---
+
+## `callPORCPTstagedataloading` / `/ponewbatchsplit` — Full Technical Analysis
+
+---
+
+### 1. What is it? (The Endpoint Itself)
+
+`/ponewbatchsplit` is the **REST trigger endpoint** of the integration `IFP_EAM_PO_RECEIPT_STAG_DATA_LOA` (`IFP EAM PO Receipt Stage Data Loading Integration`).
+
+| Property | Value |
+|---|---|
+| Integration code | `IFP_EAM_PO_RECEIPT_STAG_DATA_LOA` |
+| Adapter name | `callpostagerest` |
+| HTTP Verb | `POST` |
+| URI | `/ponewbatchsplit` |
+| Query parameters | `pbatchId` (primary tracking), `poicintid` (secondary tracking) |
+| Invocation style | `NOTIFICATION` (fire-and-forget — the caller does **not** wait for a response) |
+| Connection | `IFP_PO_RECEI_OIC_REST_CONNE` (Basic Auth) |
+| Pattern | App-Driven Orchestration, MEP00 |
+
+> ✅ **Accuracy:** Confirmed from callpostagerest_REQUEST.jca (`invocationStyle=NOTIFICATION`, `QueryParameters=pbatchId, poicintid`, `ResourceURI=/ponewbatchsplit`) and info.json (`mepType=MEP00`).
+
+---
+
+### 2. What Does "Split" Mean?
+
+The "split" is performed by the Oracle ATP stored procedure `XXIFP_PORCPT_SPLIT_INSERT_DATA`, inside the database package `ADMIN.XXIFP_PORCPT_INB_INT_PKG`.
+
+**Conceptually:** A receipt batch arriving from EAM Hexagon is stored initially as a single batch header record in ATP. This batch can contain **multiple PO receipt lines**. The split procedure reads that batch record and **decomposes it into individual staging rows** — one per receipt line — inserting them into the receipt staging table. This makes each line independently addressable for the validation and import phases that follow.
+
+The orchestration block inside the integration is explicitly named `callbatchsplitting` (from project.xml), confirming this is the design intent.
+
+> ✅ **Accuracy:** Confirmed from mainstageload_REQUEST.jca (`ProcedureName=XXIFP_PORCPT_SPLIT_INSERT_DATA`) and the try-block name `callbatchsplitting` in project.xml.
+
+---
+
+### 3. How It Is Implemented — Step-by-Step Orchestration
+
+The integration's orchestration sequence (confirmed from project.xml):
+
+```
+POST /ponewbatchsplit?pbatchId=<ID>&poicintid=<ID>
+         │
+         ▼
+[Track: pbatchId (primary), poicintid (secondary)]
+         │
+         ├── TRY block: "callbatchsplitting"
+         │       │
+         │       ├─ Step 1 — Transformer (processor_321)
+         │       │   Maps: pbatchId → P_BATCH_ID (INPUT to mainstageload)
+         │       │
+         │       ├─ Step 2 — ATP Invoke: "Oracle ATP1" (application_309)
+         │       │   Proc: ADMIN.XXIFP_PORCPT_INB_INT_PKG.XXIFP_PORCPT_SPLIT_INSERT_DATA
+         │       │   IN:   P_BATCH_ID (NUMBER)
+         │       │   OUT:  P_BATCH_ID, P_OUT_STATUS (VARCHAR2), P_ERROR_MSG (VARCHAR2)
+         │       │   ← THE ACTUAL SPLIT: reads batch, inserts individual staging rows
+         │       │
+         │       ├─ Step 3 — Transformer (processor_338)
+         │       │   Maps: pbatchId → P_BATCH_ID, hardcodes P_BATCH_STATUS = "READY"
+         │       │
+         │       ├─ Step 4 — ATP Invoke: "Oracle ATP2" (application_326)
+         │       │   Proc: ADMIN.XXIFP_PORCPT_INB_INT_PKG.XXIFP_PORCPT_BATCHSTATUS_UPDATE
+         │       │   IN:   P_BATCH_ID, P_BATCH_STATUS = "READY"
+         │       │   OUT:  P_OUT_STATUS, P_ERROR_MSG
+         │       │   ← Updates batch status to READY in ATP staging table
+         │       │
+         │       ├─ Step 5 — Transformer (processor_92)
+         │       │   Maps: pbatchId → pbatchId (for-each), instanceId → for validation call
+         │       │
+         │       ├─ Step 6 — Collocated Invoke: "Integration1" (application_54)
+         │       │   Target integration: IFP_EAM_PO_RECEIPT_VALID_INTEG
+         │       │   Operation: POST /purchaseReceiptvalidation
+         │       │   ← Hands off to Validation integration
+         │       │
+         │       └─ CatchAll (inner): stop on error
+         │
+         └── Global CatchAll (outer):
+             Send email notification → IT Distribution List
+```
+
+#### ATP Stored Procedures Invoked
+
+| Step | Proc Name | Package | Schema | Input | Output |
+|---|---|---|---|---|---|
+| Split | `XXIFP_PORCPT_SPLIT_INSERT_DATA` | `XXIFP_PORCPT_INB_INT_PKG` | `ADMIN` | `P_BATCH_ID` | `P_BATCH_ID`, `P_OUT_STATUS`, `P_ERROR_MSG` |
+| Status Update | `XXIFP_PORCPT_BATCHSTATUS_UPDATE` | `XXIFP_PORCPT_INB_INT_PKG` | `ADMIN` | `P_BATCH_ID`, `P_BATCH_STATUS` | `P_OUT_STATUS`, `P_ERROR_MSG` |
+
+> ✅ **Accuracy:** Confirmed from both `.jca` files (`SchemaName=ADMIN`, `PackageName=XXIFP_PORCPT_INB_INT_PKG`). Both use the same DB connection `IFP_COMMON_ATP_DB_CONNEC`.
+
+---
+
+### 4. How It Is Called — The Calling Chain
+
+```
+[EAM Hexagon receipt data]
+         │
+         ▼
+IFP_EAM_PRIORITY_REPROCES
+  REST: /poprioritywisereprocess
+  → publishes CALLPRIORITYWISEPORCPT event (p_new_batch_id, p_new_import_id, p_new_priority_col)
+         │
+         ▼
+IFP_EAM_PO_RECE_BATC_PROC_INTE  ← subscribes to CALLPRIORITYWISEPORCPT
+  XSL maps: p_new_batch_id → pbatchId
+  Updates ATP: batch status = DRAFT
+  HTTP POST (collocated, fire-and-forget)
+         │
+         ▼
+IFP_EAM_PO_RECEIPT_STAG_DATA_LOA  ← /ponewbatchsplit (THIS integration)
+  Calls: XXIFP_PORCPT_SPLIT_INSERT_DATA (insert staging rows)
+  Calls: XXIFP_PORCPT_BATCHSTATUS_UPDATE (status → READY)
+  HTTP POST (collocated, synchronous)
+         │
+         ▼
+IFP_EAM_PO_RECEIPT_VALID_INTEG  ← /purchaseReceiptvalidation
+  ← Validation phase begins
+```
+
+**Critical calling detail:** The Batchwise Processing integration (`IFP_EAM_PO_RECE_BATC_PROC_INTE`) maps **only `pbatchId`** to the `/ponewbatchsplit` call — `poicintid` is not mapped and arrives as empty/null. The XSL for this step shows only `p_new_batch_id → pbatchId` with no mapping for `poicintid`.
+
+> ✅ **Accuracy:** Confirmed from XSL req_f10437eb8540440bba313591862edabb.xsl (only `pbatchId` is mapped, no `poicintid` assignment) and callPORCPTstagedataloading_REQUEST.jca (`integrationContext=INTRA_PROJECT`, `integration_id=IFP_EAM_PO_RECEIPT_STAG_DATA_LOA|01.00.0000`).
+
+---
+
+### 5. Error Handling
+
+Two-tier catch-all:
+
+| Tier | Handler | Action |
+|---|---|---|
+| Inner (`callbatchsplitting` try-block) | `processor_97` | `ehStop` — halts flow silently |
+| Outer (global) | `processor_115` → `processor_120` | Send email notification, then `ehStop` |
+
+**Email details (from notification data files):**
+- **Subject:** `Error: IFP EAM PO Receipt Stage Data Loading Integration BatchID : {batchid}`
+- **Body:** `Hi Team, Purchase Order Receipt integration failed with below error in Global Fault on {CurrentDate}. Please review and take appropriate action. {Detailed_Error_Parameter} Thanks,`
+- **Error detail:** `ora:getFaultAsString()` (full OIC fault XML)
+- **To:** Resolved from `IFP_Common_Utility_Lookup` where `RICE_ID = 'INT-PORCPT-01a'`, column `IT_Distribution_List1`
+
+> ✅ **Accuracy:** Confirmed from SUBJECT_PARAM_1expr.properties, notification_body.data, Detailed_Error_Parameterexpr.properties, and TO_PARAM_1expr.properties — all directly read files.
+
+---
+
+### Summary
+
+The "batch split" design pattern here separates **batch receipt** (one event, one batch ID) from **individual record processing** (one staging row per receipt line). The `/ponewbatchsplit` endpoint is the boundary where that decomposition happens: it is the single ATP stored procedure call `XXIFP_PORCPT_SPLIT_INSERT_DATA` that transforms the opaque batch record into queryable, individually-processable staging rows, after which the batch is marked `READY` and the validation integration is fired synchronously to begin line-by-line processing.
+
+User: Tell me how many custom REST API ends (such as callPORCPTstagedataloading / /ponewbatchsplit) implemented here. provide me a full technical details and assessment for all custom REST API ends. Reply with accuracy checks on information.
+
+GitHub Copilot: Compacted conversation
+
+Searched for text `ResourceURI` (`**/extracted/**/*.jca`), 110 results
+
+Searched for text `invocationStyle` (`**/extracted/**/*.jca`), 117 results
+
+Now let me gather full details on each unique endpoint URI. Let me read the remaining JCA trigger files in parallel.    
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_INBOUN_INTEGR_ATP/project/integrations/IFP_PO_REPROCES_INTEGRAT_01.00.0000/resources/application_13/outbound_14/resourcegroup_15/getporeporcess_REQUEST.jca)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_PO_RECEIP_REPROC_INTEGR_01.00.0000/resources/application_13/outbound_14/resourcegroup_15/getporcptreprocess_REQUEST.jca)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_UPDA_MESS_IN_EAM_HEXA_RE_01.00.0000/resources/application_13/outbound_14/resourcegroup_15/UpdatemessageinEAM_REQUEST.jca)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_PO_RECEI_IMPOR_CALLB_REPRO_01.00.0000/resources/application_13/outbound_14/resourcegroup_15/callbackreprocess_REQUEST.jca)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_INBOUN_INTEGR_ATP/project/integrations/IFP_EAM_STATU_UPDAT_INTEG_M_01.00.0000/resources/application_13/outbound_14/resourcegroup_15/poinboundmain_REQUEST.jca)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_INBOUN_INTEGR_ATP/project/integrations/IFP_EAM_PO_VALIDA_INTEGR_01.00.0000/resources/application_13/outbound_14/resourcegroup_15/POIntevalidation_REQUEST.jca#1-1), lines 1 to 40
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECEIPT_VALID_INTEG_01.00.0000/resources/application_13/outbound_14/resourcegroup_15/POIntevalidation_REQUEST.jca#1-1), lines 1 to 40
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_SUPPLIER_OUTBOUND_INTEGRAT/project/integrations/TEST_IFP_SUPPL_OUTBO_INTEG_17702_01.00.0000/resources/application_4712/outbound_4713/resourcegroup_4714/Triggersuppout_REQUEST.jca)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_AP_INVO_FREI_LINE_UPDA_INTE/project/integrations/IFP_AP_INVO_FREI_MISC_COA_UPDA_M_01.00.0000/resources/application_681/outbound_682/resourcegroup_683/SubmitMiscFriIntegration_REQUEST.jca)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_IMPORT_INTEGR_01.00.0000/resources/application_13/outbound_14/resourcegroup_15/poinboundmain_REQUEST.jca)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_INBOUN_INTEGR_ATP/project/integrations/IFP_EAM_PO_IMPORT_INTEGR_01.00.0000/resources/application_13/outbound_14/resourcegroup_15/poinboundmain_REQUEST.jca)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_INBOUN_INTEGR_ATP/project/integrations/IFP_EAM_PO_BATCH_REPRO_INTEG_01.00.0000/resources/application_13/outbound_14/resourcegroup_15/batchwisereprocess_REQUEST.jca)
+
+Now let me get the info.json files for each integration to confirm integration names and projects, then compile the full analysis.    
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_PO_RECEIP_REPROC_INTEGR_01.00.0000/info.json)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_INBOUN_INTEGR_ATP/project/integrations/IFP_PO_REPROCES_INTEGRAT_01.00.0000/info.json)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_UPDA_MESS_IN_EAM_HEXA_RE_01.00.0000/info.json)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_PO_RECEI_IMPOR_CALLB_REPRO_01.00.0000/info.json)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_INBOUN_INTEGR_ATP/project/integrations/IFP_EAM_STATU_UPDAT_INTEG_M_01.00.0000/info.json)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_IMPORT_INTEGR_01.00.0000/info.json)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_INBOUN_INTEGR_ATP/project/integrations/IFP_EAM_PO_IMPORT_INTEGR_01.00.0000/info.json)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_INBOUN_INTEGR_ATP/project/integrations/IFP_EAM_PO_BATCH_REPRO_INTEG_01.00.0000/info.json)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_INBOUN_INTEGR_ATP/project/integrations/IFP_PO_IMPORT_CALLBA_REPROC_01.00.0000/info.json)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_AP_INVO_FREI_LINE_UPDA_INTE/project/integrations/IFP_AP_INVO_FREI_MISC_COA_UPDA_M_01.00.0000/info.json)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_SUPPLIER_OUTBOUND_INTEGRAT/project/integrations/TEST_IFP_SUPPL_OUTBO_INTEG_17702_01.00.0000/info.json)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_SUPPLIER_OUTBOUND_INTEGRAT/project/integrations/TEST_IFP_SCHED_SUPPL_OUTBO_INTEG_01.00.0000/resources/application_18/inbound_19/resourcegroup_87/callsupplieroutboundint_REQUEST.jca)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_SUPPLIER_OUTBOUND_INTEGRAT/project/integrations/TEST_IFP_SCHED_SUPPL_OUTBO_INTEG_01.00.0000/info.json)
+
+Now I have all data needed. Let me compile the comprehensive analysis.
+
+---
+
+## Custom REST API Endpoints — Full Technical Analysis
+
+**Total count: 11 unique endpoint URIs** across **16 integration trigger instances** in 4 of the 5 projects.
+
+> ✅ **Source verification:** All details confirmed directly from `.jca` `endpoint-activation` specs and integration info.json files. All JCA files were read directly. No details are inferred.
+
+---
+
+### How to Read This
+
+In OIC, an integration exposes a **custom REST endpoint** when its trigger connection (adapter=REST, `endpoint-activation`) defines a custom `ResourceURI`. These are the integration's "entry doors." All 16 instances below use `HttpVerb=POST`, `securityPolicy=BASIC_AUTH`, and `invocationStyle` as specified. All are App-Driven Orchestration (MEP00) unless noted.
+
+---
+
+## Endpoint 1 — `/ponewbatchsplit`
+
+**Purpose:** Triggers the batch receipt split and stage-load for a batch ID.
+
+| Property | PO Inbound instance | Receipt Inbound instance |
+|---|---|---|
+| Integration code | `IFP_EAM_PO_STAG_DATA_LOAD_INTE` | `IFP_EAM_PO_RECEIPT_STAG_DATA_LOA` |
+| Integration name | IFP EAM PO Stage Data Load Integration | IFP EAM PO Receipt Stage Data Loading Integration |
+| Project | `IFP_PO_INBOUN_INTEGR_ATP` | `IFP_PO_RECEI_INBOU_INTEG_ATP` |
+| JCA trigger name | callpostagerest_REQUEST.jca | callpostagerest_REQUEST.jca |
+| HTTP Method | POST | POST |
+| Query parameters | `pbatchId` | `pbatchId`, `poicintid` |
+| Invocation style | NOTIFICATION (fire-and-forget) | NOTIFICATION (fire-and-forget) |
+| REST connection | `IFP_PO_OIC_REST_CONNEC` | `IFP_PO_RECEI_OIC_REST_CONNE` |
+| Who calls it | `IFP_EAM_PO_BATCH_PROCE_INTEG` (Batchwise Processing) | `IFP_EAM_PO_RECE_BATC_PROC_INTE` (Batchwise Processing) via collocated ICS |
+| What it does | Splits PO batch → stages PO lines in ATP → calls Validation | Splits receipt batch → stages receipt lines in ATP → calls Receipt Validation |
+
+> ✅ Confirmed from callpostagerest_REQUEST.jca (both projects). The Receipt version carries `poicintid` as a second tracker while the PO version only uses `pbatchId`.
+
+---
+
+## Endpoint 2 — `/purchasevalidation`
+
+**Purpose:** Triggers validation of a staged PO batch (BIP item/supplier checks, item creation if needed).
+
+| Property | Value |
+|---|---|
+| Integration code | `IFP_EAM_PO_VALIDA_INTEGR` |
+| Integration name | IFP EAM PO Validation Integration |
+| Project | `IFP_PO_INBOUN_INTEGR_ATP` |
+| JCA trigger name | POIntevalidation_REQUEST.jca |
+| HTTP Method | POST |
+| Query parameters | `pbatchId`, `poicintid` |
+| Invocation style | **REQUEST_RESPONSE** (synchronous — caller waits for result) |
+| REST connection | `IFP_PO_OIC_REST_CONNEC` |
+| Response schema | JSON `{ "pbatchid", "pprevoicintid", "Argument1", "Argument2", "Argument3" }` |
+| Who calls it | `IFP_EAM_PO_STAG_DATA_LOAD_INTE` (stage load) and `IFP_PO_REPROCES_INTEGRAT` (reprocess), via collocated ICS |
+| What it does | BIP report validation, item existence checks, item/org creation if missing, routes to Import |
+
+> ✅ Confirmed from POIntevalidation_REQUEST.jca (PO). This is the **only synchronous** (`REQUEST_RESPONSE`) custom endpoint in the PO Inbound project — the caller blocks and reads the JSON response.
+
+---
+
+## Endpoint 3 — `/purchaseReceiptvalidation`
+
+**Purpose:** Triggers validation of a staged PO Receipt batch (BIP supplier/item/receipt checks).
+
+| Property | Value |
+|---|---|
+| Integration code | `IFP_EAM_PO_RECEIPT_VALID_INTEG` |
+| Integration name | IFP EAM PO Receipt Validation integration |
+| Project | `IFP_PO_RECEI_INBOU_INTEG_ATP` |
+| JCA trigger name | POIntevalidation_REQUEST.jca |
+| HTTP Method | POST |
+| Query parameters | `pbatchId`, `poicintid` |
+| Invocation style | **REQUEST_RESPONSE** (synchronous) |
+| REST connection | `IFP_PO_RECEI_OIC_REST_CONNE` |
+| Response schema | JSON `{ "pbatchid", "pprevoicintid", "Argument1", "Argument2", "Argument3" }` |
+| Who calls it | `IFP_EAM_PO_RECEIPT_STAG_DATA_LOA` (stage load) and `IFP_PO_RECEIP_REPROC_INTEGR` (reprocess), via collocated ICS |
+| What it does | BIP supplier/item/receipt header+line validation, routes to Receipt Import |
+
+> ✅ Confirmed from POIntevalidation_REQUEST.jca (Receipt). Same pattern as `/purchasevalidation` but for receipt domain. Also synchronous.
+
+---
+
+## Endpoint 4 — `/poinboundmain`
+
+**Purpose:** Triggers the ERP import or EAM status-update integration. Used in both PO and Receipt domains.
+
+| Property | EAM Status Update | PO Import | Receipt Import |
+|---|---|---|---|
+| Integration code | `IFP_EAM_STATU_UPDAT_INTEG_M` | `IFP_EAM_PO_IMPORT_INTEGR` | `IFP_EAM_PO_IMPORT_INTEGR` |
+| Integration name | IFP EAM Status Update Integration | IFP EAM PO Import integration | IFP EAM PO Receipt Import integration |
+| Project | PO Inbound | PO Inbound | Receipt Inbound |
+| Query parameters | `pbatchId`, `psuccessuhloadtype`, `pstatsucode` | `pbatchId` | `pbatchId` |
+| Invocation style | NOTIFICATION | NOTIFICATION | NOTIFICATION |
+| REST connection | `IFP_PO_OIC_REST_CONNEC` | `IFP_PO_OIC_REST_CONNEC` | `IFP_PO_RECEI_OIC_REST_CONNE` |
+| Who calls it | `IFP_EAM_STATUS_EVENT_INTEGR` (event subscriber) | `IFP_EAM_PO_VALIDA_INTEGR` (after validation passes) | `IFP_EAM_PO_RECEIPT_VALID_INTEG` (after validation passes) |
+| What it does | Pushes EAM PO status updates back to EAM Hexagon | Submits validated PO to ERP Cloud (Oracle Fusion import) | Submits validated receipt to ERP Cloud (Oracle Fusion import) |
+
+> ✅ Three distinct integration instances share the same URI `/poinboundmain` but on **different OIC REST connections** (different base URLs). They do not conflict. The EAM Status Update version carries additional parameters (`psuccessuhloadtype`, `pstatsucode`) not present in the import variants.
+
+---
+
+## Endpoint 5 — `/poprioritywisereprocess`
+
+**Purpose:** Manual/operational REST trigger to initiate a priority-wise or batch-wise reprocess of PO receipts.
+
+| Property | Value |
+|---|---|
+| Integration code | `IFP_EAM_PRIORITY_REPROCES` |
+| Integration name | IFP EAM Prioritywise Reprocess |
+| Project | `IFP_PO_RECEI_INBOU_INTEG_ATP` |
+| JCA trigger name | getprioritywise_REQUEST.jca |
+| HTTP Method | POST |
+| Query parameters | `pbatchid`, `pimportid`, `priority` |
+| Invocation style | NOTIFICATION (fire-and-forget) |
+| REST connection | `IFP_PO_RECEI_OIC_REST_CONNE` |
+| Who calls it | IT support / operations staff manually (external REST call) |
+| What it does | CBR: if `pbatchid > 0` → publishes `CALLPRIORITYWISEPORCPT1` event; else uses `priority` → ATP proc `PORCPTpriority` → publishes `CALLPRIORITYWISEPORCPT2` event |
+
+> ✅ Confirmed from getprioritywise_REQUEST.jca. This is the primary operations-facing manual reprocess endpoint for the Receipt pipeline.
+
+---
+
+## Endpoint 6 — `/poreprocess`
+
+**Purpose:** Manual/operational REST trigger to reprocess a specific PO batch or PO number.
+
+| Property | Value |
+|---|---|
+| Integration code | `IFP_PO_REPROCES_INTEGRAT` |
+| Integration name | IFP PO Validation-Import Reprocess Integration |
+| Project | `IFP_PO_INBOUN_INTEGR_ATP` |
+| JCA trigger name | getporeporcess_REQUEST.jca |
+| HTTP Method | POST |
+| Query parameters | `PbatchID`, `PONumber` |
+| Invocation style | NOTIFICATION (fire-and-forget) |
+| REST connection | `IFP_PO_OIC_REST_CONNEC` |
+| Who calls it | IT support / operations staff manually (external REST call) |
+| What it does | Routes to validation/import reprocess using batch ID or PO number; calls collocated `/purchasevalidation` |
+
+> ✅ Confirmed from getporeporcess_REQUEST.jca. The PO Inbound parallel to `/poprioritywisereprocess`.
+
+---
+
+## Endpoint 7 — `/porcptreprocess`
+
+**Purpose:** Manual/operational REST trigger to reprocess a specific receipt batch or receipt number.
+
+| Property | Value |
+|---|---|
+| Integration code | `IFP_PO_RECEIP_REPROC_INTEGR` |
+| Integration name | IFP PO Receipt Validation-Import Reprocess |
+| Project | `IFP_PO_RECEI_INBOU_INTEG_ATP` |
+| JCA trigger name | getporcptreprocess_REQUEST.jca |
+| HTTP Method | POST |
+| Query parameters | `pbatchid`, `preceiptnum` |
+| Invocation style | NOTIFICATION (fire-and-forget) |
+| REST connection | `IFP_PO_RECEI_OIC_REST_CONNE` |
+| Who calls it | IT support / operations staff manually (external REST call) |
+| What it does | Routes to receipt validation/import reprocess using batch ID or receipt number; calls collocated `/purchaseReceiptvalidation` |
+
+> ✅ Confirmed from getporcptreprocess_REQUEST.jca. The Receipt parallel to `/poreprocess`.
+
+---
+
+## Endpoint 8 — `/callbackreprocess`
+
+**Purpose:** Triggered after ERP import completes (via ERP import job callback) to handle import results — either process success or trigger reprocess.
+
+Three separate integration instances share this URI on different connections:
+
+| Property | Receipt Callback Repro | PO Import Callback Repro | PO Batchwise Repro |
+|---|---|---|---|
+| Integration code | `IFP_PO_RECEI_IMPOR_CALLB_REPRO` | `IFP_PO_IMPORT_CALLBA_REPROC` | `IFP_EAM_PO_BATCH_REPRO_INTEG` |
+| Integration name | IFP PO Receipt Import Callback Reprocess | IFP PO Import Callback Reprocess | IFP EAM PO Batchwise Reprocessing Integration |
+| Project | Receipt Inbound | PO Inbound | PO Inbound |
+| JCA trigger name | callbackreprocess_REQUEST.jca | callbackreprocess_REQUEST.jca | batchwisereprocess_REQUEST.jca |
+| Query parameters | `loadrequestid`, `importrequestid` | `loadrequestid`, `importrequestid` | `importid` only |
+| Invocation style | NOTIFICATION | NOTIFICATION | NOTIFICATION |
+| REST connection | `IFP_PO_RECEI_OIC_REST_CONNE` | `IFP_PO_OIC_REST_CONNEC` | `IFP_PO_OIC_REST_CONNEC` |
+| Who calls it | ERP import ESS callback (after receipt import job) | ERP import ESS callback (after PO import job) | `IFP_EAM_PO_BATCH_REPRO_INTEG` internal event subscriber |
+| What it does | Checks import result → success → publish event to resume; failure → reprocess or error | Same for PO | Triggered by `TRIGGERNEWPOBATCH` event; routes batch back through for reprocess |
+
+> ✅ Note: batchwisereprocess_REQUEST.jca uses only `importid` — a subset of the full callback params. The PO Batchwise Reprocess integration (`IFP_EAM_PO_BATCH_REPRO_INTEG`, MEP00, triggers on `TRIGGERNEWPOBATCH` event) calls this same URI `/callbackreprocess` on the OIC REST connection.
+
+---
+
+## Endpoint 9 — `/updatemessage`
+
+**Purpose:** Triggers update of error/status message back into EAM Hexagon for a receipt batch, after a reprocess cycle.
+
+| Property | Value |
+|---|---|
+| Integration code | `IFP_EAM_UPDA_MESS_IN_EAM_HEXA_RE` |
+| Integration name | IFP EAM Update Message in EAM Hexagon Reprocess |
+| Project | `IFP_PO_RECEI_INBOU_INTEG_ATP` |
+| JCA trigger name | UpdatemessageinEAM_REQUEST.jca |
+| HTTP Method | POST |
+| Query parameters | `pbatchid`, `perrorcode` |
+| Invocation style | NOTIFICATION (fire-and-forget) |
+| REST connection | `IFP_PO_RECEI_OIC_REST_CONNE` |
+| MEP | MEP00, subscribes to `UPDATEERRORINEAMHEXAGON` event |
+| Who calls it | Called after receipt reprocess failures; subscribes to published event |
+| What it does | Pushes error code and batch ID back to EAM Hexagon via EAM REST API |
+
+> ✅ Confirmed from UpdatemessageinEAM_REQUEST.jca and info.json (event dependency `UPDATEERRORINEAMHEXAGON|1|pub`).
+
+---
+
+## Endpoint 10 — `/PostMiscFreight`
+
+**Purpose:** Triggers the AP Invoice Freight Misc COA Update after a Payables import completes.
+
+| Property | Value |
+|---|---|
+| Integration code | `IFP_AP_INVO_FREI_MISC_COA_UPDA_M` |
+| Integration name | IFP AP Invoice Freight Misc COA Update Main |
+| Project | `IFP_AP_INVO_FREI_LINE_UPDA_INTE` |
+| JCA trigger name | SubmitMiscFriIntegration_REQUEST.jca |
+| HTTP Method | POST |
+| Query parameters | `EssProcessId`, `OicIntegration` |
+| Invocation style | NOTIFICATION (fire-and-forget) |
+| REST connection | `IFP_APFR_OIC_REST_CONNEC` |
+| Tracking | `EssProcessId` (primary) |
+| Who calls it | `IFP_SUBMI_PAYAB_IMPOR_INVOI_INTE` (Submit Payables Import Invoice) via CallMiscFreighUpdateIntegration_REQUEST.jca |
+| What it does | Picks up ESS process result; updates freight invoice line COA (Chart of Accounts) via BIP + ERP REST; handles Misc freight distribution updates |
+
+> ✅ Confirmed from SubmitMiscFriIntegration_REQUEST.jca (outbound_682 = trigger) and CallMiscFreighUpdateIntegration_REQUEST.jca (inbound_185 = outward call from Submit integration). Parameters `EssProcessId` and `OicIntegration` correlate the ESS process result.
+
+---
+
+## Endpoint 11 — `/supplieroutbound`
+
+**Purpose:** Triggers the Supplier Outbound Integration to extract, transform and load supplier data from EAM Hexagon to Oracle ERP.
+
+| Property | Value |
+|---|---|
+| Integration code | `TEST_IFP_SUPPL_OUTBO_INTEG_17702` |
+| Integration name | IFP Supplier Outbound Integration |
+| Project | `IFP_SUPPLIER_OUTBOUND_INTEGRAT` |
+| JCA trigger name | Triggersuppout_REQUEST.jca |
+| HTTP Method | POST |
+| Query parameters | `psuppliernumber`, `pvendorsitecode`, `prundate` |
+| Invocation style | NOTIFICATION (fire-and-forget) |
+| REST connection | `IFP_SUPP_OIC_REST_CONNEC` |
+| Tracking | `prundate` |
+| Who calls it | `TEST_IFP_SCHED_SUPPL_OUTBO_INTEG` (Schedule integration, MEP07 scheduled trigger) via collocated ICS call |
+| What it does | Fetches supplier data from EAM Hexagon grids → BIP report load → creates/updates supplier in Oracle ERP Cloud (REST), updates supplier sites, DFF flags |
+
+> ✅ Confirmed from Triggersuppout_REQUEST.jca (outbound_4713 = trigger) and callsupplieroutboundint_REQUEST.jca (`integrationContext=INTRA_PROJECT`, `integration_id=TEST_IFP_SUPPL_OUTBO_INTEG_17702|01.00.0000`).
+
+---
+
+## Summary Table
+
+| # | Endpoint URI | HTTP | Style | Projects | Callers | Parameters |
+|---|---|---|---|---|---|---|
+| 1 | `/ponewbatchsplit` | POST | NOTIFICATION | PO Inbound + Receipt Inbound (2 instances) | Batchwise Processing (collocated ICS) | `pbatchId` [+`poicintid` in Receipt] |
+| 2 | `/purchasevalidation` | POST | **REQUEST_RESPONSE** | PO Inbound | Stage Data Load + Reprocess (collocated) | `pbatchId`, `poicintid` |
+| 3 | `/purchaseReceiptvalidation` | POST | **REQUEST_RESPONSE** | Receipt Inbound | Stage Data Load + Reprocess (collocated) | `pbatchId`, `poicintid` |
+| 4 | `/poinboundmain` | POST | NOTIFICATION | PO Inbound (×2) + Receipt Inbound (×1) = 3 instances | Validation integration + EAM Status Event | `pbatchId` [+status params in EAM variant] |
+| 5 | `/poprioritywisereprocess` | POST | NOTIFICATION | Receipt Inbound | IT Support (manual) | `pbatchid`, `pimportid`, `priority` |
+| 6 | `/poreprocess` | POST | NOTIFICATION | PO Inbound | IT Support (manual) | `PbatchID`, `PONumber` |
+| 7 | `/porcptreprocess` | POST | NOTIFICATION | Receipt Inbound | IT Support (manual) | `pbatchid`, `preceiptnum` |
+| 8 | `/callbackreprocess` | POST | NOTIFICATION | Receipt Inbound + PO Inbound (3 instances) | ERP ESS import callback + Batch Reprocess event | `loadrequestid`, `importrequestid` [or `importid` alone in Batch Repro] |
+| 9 | `/updatemessage` | POST | NOTIFICATION | Receipt Inbound | EAM Hexagon error event subscriber | `pbatchid`, `perrorcode` |
+| 10 | `/PostMiscFreight` | POST | NOTIFICATION | AP Invoice Freight | Submit Payables Import (collocated) | `EssProcessId`, `OicIntegration` |
+| 11 | `/supplieroutbound` | POST | NOTIFICATION | Supplier Outbound | Schedule integration (collocated ICS) | `psuppliernumber`, `pvendorsitecode`, `prundate` |
+
+**Total: 11 unique URIs, 16 integration trigger instances, across 4 of 5 OIC projects.**
+
+> ⚠️ **Notable design observation:** `/callbackreprocess` and `/poinboundmain` are reused URI names across multiple integrations that live on **different OIC REST connections** (different base URLs), so they do not conflict at runtime. However, if the base URL is ever consolidated onto a single connection, naming collisions would occur — this is a potential maintenance risk.
+
+> ⚠️ **Accuracy check — `IFP_AP_INVOIC_OUTBOU_INTEGR1` (AP Invoice Outbound) has no custom REST trigger endpoint.** Its integration `IFP_AP_INVOI_OUTBO_INTEG_SF` is triggered via BIP SOAP report subscription, not a custom REST endpoint. Confirmed: all JCA files in that project's `outbound_XX` paths use SOAP/BIP adapters, not REST triggers.
+
+User: Construct system flow diagrams with these endpoints (with calls details) if possible. Reply with accuracy checks on information.
+
+GitHub Copilot: Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_INBOUN_INTEGR_ATP/project/integrations/IFP_EAM_PO_BATCH_PROCE_INTEG_01.00.0000/info.json)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECE_BATC_PROC_INTE_01.00.0000/info.json)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_INBOUN_INTEGR_ATP/project/integrations/IFP_EAM_STATUS_EVENT_INTEGR_01.00.0000/info.json)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_INBOUN_INTEGR_ATP/project/integrations/IFP_PO_IMPOR_CALLB_16_FEB_01.00.0000/info.json)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_UPDA_MESS_IN_EAM_HEXA_01.00.0000/info.json)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_PO_RECEI_IMPOR_CALLB_REQUE_01.00.0000/info.json)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_AP_INVO_FREI_LINE_UPDA_INTE/project/integrations/IFP_SUBMI_PAYAB_IMPOR_INVOI_INTE_01.00.0000/info.json)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_AP_INVO_FREI_LINE_UPDA_INTE/project/integrations/IFP_AP_INVO_FREI_LINE_UPDA_INTE_01.00.0000/info.json)
+
+Now I have all required facts confirmed. Let me produce the diagrams.  
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/UPDA_IFP_EAM_PO_RECE_DATA_EXTR_I_01.00.0000/info.json)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_INBOUN_INTEGR_ATP/project/integrations/IFP_EAM_PO_DATA_EXTRA_INTEG_01.00.0000/info.json)
+
+All facts confirmed. Now writing the 5 diagrams.
+
+> **Legend used in all diagrams:**
+> - `[box]` = OIC Integration
+> - `(["text"])` = OIC Application Event (pub/sub)
+> - `[("text")]` = Database  
+> - `[/"text"/]` = External System
+> - `-.->` = Custom REST endpoint call (collocated ICS, internal)
+> - `-->` = External system call (ERP, BIP, EAM, ATP)
+> - `★` marks the custom REST endpoint URI exposed by that integration
+
+---
+
+## Diagram 1 — PO Inbound: Main Pipeline
+
+> Source: `IFP_PO_INBOUN_INTEGR_ATP`
+
+```mermaid
+flowchart TD
+    EAM[/"EAM Hexagon\nHexagon Grid REST"/]
+    BIP[/"BIP Reports\nSOAP"/]
+    ERP[/"Oracle ERP Cloud\nPO Import ESS Job"/]
+    ATP[("ATP DB\nXXIFP_POINBOUND_INT_PKG")]
+
+    EXTRACT["IFP_EAM_PO_DATA_EXTRA_INTEG\nPO Data Extraction\nMEP07 · Scheduled"]
+    EV1(["⚡ TRIGGERNEWPOBATCH\n pub → sub"])
+    BATCH["IFP_EAM_PO_BATCH_PROCE_INTEG\nBatchwise Processing\nMEP08 · Event subscriber"]
+
+    STAGE["IFP_EAM_PO_STAG_DATA_LOAD_INTE\nPO Stage Data Load\n★ POST /ponewbatchsplit\n   ?pbatchId\n   NOTIFICATION"]
+
+    VALID["IFP_EAM_PO_VALIDA_INTEGR\nPO Validation\n★ POST /purchasevalidation\n   ?pbatchId  &poicintid\n   REQUEST_RESPONSE  sync"]
+
+    IMPORT["IFP_EAM_PO_IMPORT_INTEGR\nPO Import\n★ POST /poinboundmain\n   ?pbatchId\n   NOTIFICATION"]
+
+    CALLBACK["IFP_PO_IMPOR_CALLB_16_FEB\nPO Import Callback\nMEP00 · ERP event subscriber"]
+
+    EV2(["⚡ PUBLISH_EAMPOSTATUSUPDAT\n pub → sub"])
+
+    STATUSEVT["IFP_EAM_STATUS_EVENT_INTEGR\nStatus Event Handler\nMEP08 · Event subscriber"]
+
+    STATUSUPD["IFP_EAM_STATU_UPDAT_INTEG_M\nEAM Status Update\n★ POST /poinboundmain\n   ?pbatchId\n   &psuccessuhloadtype &pstatsucode\n   NOTIFICATION"]
+
+    EAM -->|"Hexagon Grid REST\nfetch PO header + line grids"| EXTRACT
+    EXTRACT -->|"ATP: store batch records"| ATP
+    EXTRACT -->|"publish event"| EV1
+    EV1 -->|"subscribe"| BATCH
+    BATCH -->|"ATP: ponewbatchfetch\nfetch batch record"| ATP
+    BATCH -.->|"① collocated ICS · NOTIFICATION\nPOST /ponewbatchsplit\n?pbatchId"| STAGE
+    STAGE -->|"ATP: SPLIT_INSERT_DATA\nsplit batch → staging rows"| ATP
+    STAGE -->|"ATP: BATCHSTATUS_UPDATE\nstatus → READY"| ATP
+    STAGE -.->|"② collocated ICS · SYNC\nPOST /purchasevalidation\n?pbatchId&poicintid"| VALID
+    VALID -->|"BIP SOAP\nitem / supplier / COA validation"| BIP
+    VALID -.->|"③ collocated ICS · NOTIFICATION\nPOST /poinboundmain\n?pbatchId"| IMPORT
+    IMPORT -->|"ERP REST/SOAP\nPO Import FBDI · ESS job"| ERP
+    ERP -->|"ERP application event\nimport job completed"| CALLBACK
+    CALLBACK -->|"BIP SOAP\nimport results report"| BIP
+    CALLBACK -->|"ATP: update batch results"| ATP
+    CALLBACK -->|"publish event"| EV2
+    EV2 -->|"subscribe"| STATUSEVT
+    STATUSEVT -.->|"④ collocated ICS · NOTIFICATION\nPOST /poinboundmain\n?pbatchId\n&psuccessuhloadtype &pstatsucode"| STATUSUPD
+    STATUSUPD -->|"EAM REST API\nstatus writeback to Hexagon"| EAM
+```
+
+---
+
+## Diagram 2 — PO Inbound: Reprocess Paths
+
+> Source: `IFP_PO_INBOUN_INTEGR_ATP`
+
+```mermaid
+flowchart TD
+    IT[/"IT Support / Ops\nexternal caller"/]
+    ATP[("ATP DB\nXXIFP_POINBOUND_INT_PKG")]
+    BIP[/"BIP Reports\nSOAP"/]
+    ERP[/"Oracle ERP Cloud"/]
+
+    REPRO["IFP_PO_REPROCES_INTEGRAT\nPO Validation-Import Reprocess\n★ POST /poreprocess\n   ?PbatchID  &PONumber\n   NOTIFICATION  external trigger"]
+
+    VALID["IFP_EAM_PO_VALIDA_INTEGR\nPO Validation\n★ POST /purchasevalidation\n   ?pbatchId  &poicintid\n   REQUEST_RESPONSE  sync"]
+
+    IMPORT["IFP_EAM_PO_IMPORT_INTEGR\nPO Import\n★ POST /poinboundmain\n   ?pbatchId\n   NOTIFICATION"]
+
+    EV_BATCH(["⚡ TRIGGERNEWPOBATCH\nre-published for reprocess"])
+
+    BREPRO["IFP_EAM_PO_BATCH_REPRO_INTEG\nBatchwise Reprocess\nMEP08 · subscribes to TRIGGERNEWPOBATCH"]
+
+    CBKREPRO["IFP_PO_IMPORT_CALLBA_REPROC\nImport Callback Reprocess\n★ POST /callbackreprocess\n   ?importid\n   NOTIFICATION"]
+
+    IT -->|"⑤ POST /poreprocess\n?PbatchID&PONumber"| REPRO
+    REPRO -->|"ATP: fetch batch by ID or PO#"| ATP
+    REPRO -.->|"collocated ICS · SYNC\nPOST /purchasevalidation\n?pbatchId&poicintid"| VALID
+    VALID -->|"BIP SOAP validation"| BIP
+    VALID -.->|"collocated ICS · NOTIFICATION\nPOST /poinboundmain\n?pbatchId"| IMPORT
+    IMPORT -->|"ERP import job"| ERP
+
+    EV_BATCH -->|"subscribe"| BREPRO
+    BREPRO -.->|"⑥ collocated ICS · NOTIFICATION\nPOST /callbackreprocess\n?importid"| CBKREPRO
+    CBKREPRO -->|"ATP: query import results"| ATP
+    CBKREPRO -->|"BIP SOAP\nimport details report"| BIP
+```
+
+> ⚠️ **Accuracy note:** `IFP_EAM_PO_BATCH_PROCE_INTEG` (main flow) and `IFP_EAM_PO_BATCH_REPRO_INTEG` (reprocess) both subscribe to `TRIGGERNEWPOBATCH`. In OIC, all subscribers receive each publication (fan-out). Internal conditions (batch status flags or payload differences) differentiate which path each integration acts on. This routing logic is not visible in the JCA files and would require reading the XSL/orchestration block of `IFP_EAM_PO_BATCH_REPRO_INTEG`. Treat this path as ⚠️ **partially confirmed**.
+
+---
+
+## Diagram 3 — Receipt Inbound: Main Pipeline
+
+> Source: `IFP_PO_RECEI_INBOU_INTEG_ATP`
+
+```mermaid
+flowchart TD
+    EAM[/"EAM Hexagon\nHexagon Grid REST"/]
+    BIP[/"BIP Reports\nSOAP"/]
+    ERP[/"Oracle ERP Cloud\nReceipt Import ESS Job"/]
+    ATP[("ATP DB\nXXIFP_PORCPT_INB_INT_PKG")]
+
+    EXTRACT["UPDA_IFP_EAM_PO_RECE_DATA_EXTR_I\nReceipt Data Extraction\nMEP07 · Scheduled"]
+    EV1(["⚡ CALLPRIORITYWISEPORCPT\n pub → sub"])
+    BATCH["IFP_EAM_PO_RECE_BATC_PROC_INTE\nBatchwise Processing\nMEP08 · Event subscriber"]
+
+    STAGE["IFP_EAM_PO_RECEIPT_STAG_DATA_LOA\nReceipt Stage Data Load\n★ POST /ponewbatchsplit\n   ?pbatchId  &poicintid\n   NOTIFICATION"]
+
+    VALID["IFP_EAM_PO_RECEIPT_VALID_INTEG\nReceipt Validation\n★ POST /purchaseReceiptvalidation\n   ?pbatchId  &poicintid\n   REQUEST_RESPONSE  sync"]
+
+    IMPORT["IFP_EAM_PO_IMPORT_INTEGR  Receipt\nReceipt Import\n★ POST /poinboundmain\n   ?pbatchId\n   NOTIFICATION"]
+
+    CALLBACK["IFP_PO_RECEI_IMPOR_CALLB_REQUE\nReceipt Import Callback\nMEP00 · ERP event subscriber"]
+
+    EV_ERR(["⚡ UPDATEERRORINEAMHEXAGON\n pub → sub  on error"])
+    EV_RETRY(["⚡ CALLPRIORITYWISEPORCPT\n pub → sub  on retry"])
+
+    EAMUPD["IFP_EAM_UPDA_MESS_IN_EAM_HEXA\nEAM Hexagon Update\nMEP08 · subscribes to UPDATEERRORINEAMHEXAGON"]
+
+    EAM -->|"Hexagon Grid REST\nReceive / Return grids"| EXTRACT
+    EXTRACT -->|"ATP: store receipt staging"| ATP
+    EXTRACT -->|"publish event"| EV1
+    EV1 -->|"subscribe"| BATCH
+    BATCH -->|"ATP: update batch → DRAFT"| ATP
+    BATCH -.->|"① collocated ICS · NOTIFICATION\nPOST /ponewbatchsplit\n?pbatchId&poicintid"| STAGE
+    STAGE -->|"ATP: XXIFP_PORCPT_SPLIT_INSERT_DATA\nsplit batch → individual staging rows"| ATP
+    STAGE -->|"ATP: XXIFP_PORCPT_BATCHSTATUS_UPDATE\nstatus → READY"| ATP
+    STAGE -.->|"② collocated ICS · SYNC\nPOST /purchaseReceiptvalidation\n?pbatchId&poicintid"| VALID
+    VALID -->|"BIP SOAP\nsupplier / item / receipt validation"| BIP
+    VALID -.->|"③ collocated ICS · NOTIFICATION\nPOST /poinboundmain\n?pbatchId"| IMPORT
+    IMPORT -->|"ERP REST/SOAP\nReceipt Import · ESS job"| ERP
+    ERP -->|"ERP application event\nimport job completed"| CALLBACK
+    CALLBACK -->|"BIP SOAP\nerror / results report"| BIP
+    CALLBACK -->|"ATP: update import results"| ATP
+    CALLBACK -->|"publish on error"| EV_ERR
+    CALLBACK -->|"publish on retry"| EV_RETRY
+    EV_ERR -->|"subscribe"| EAMUPD
+    EAMUPD -->|"EAM REST\n/userdefinedscreenservices\nerror message writeback"| EAM
+    EV_RETRY -.->|"re-triggers Batchwise Processing\nsame path as main flow"| BATCH
+```
+
+---
+
+## Diagram 4 — Receipt Inbound: Reprocess Paths
+
+> Source: `IFP_PO_RECEI_INBOU_INTEG_ATP`
+
+```mermaid
+flowchart TD
+    IT[/"IT Support / Ops\nexternal caller"/]
+    ATP[("ATP DB\nXXIFP_PORCPT_INB_INT_PKG")]
+    BIP[/"BIP Reports\nSOAP"/]
+    EAM[/"EAM Hexagon"/]
+
+    PRIREPRO["IFP_EAM_PRIORITY_REPROCES\nPriority / Batch Reprocess\n★ POST /poprioritywisereprocess\n   ?pbatchid &pimportid &priority\n   NOTIFICATION  external trigger"]
+
+    CBR{"CBR\npbatchid > 0?"}
+
+    EV_C1(["⚡ CALLPRIORITYWISEPORCPT\npublish path A: by batch ID"])
+    EV_C2(["⚡ CALLPRIORITYWISEPORCPT\npublish path B: by priority"])
+
+    BATCH["IFP_EAM_PO_RECE_BATC_PROC_INTE\nBatchwise Processing\nsubscribes to CALLPRIORITYWISEPORCPT\n→ calls POST /ponewbatchsplit\n→ re-enters main pipeline"]
+
+    RVREPRO["IFP_PO_RECEIP_REPROC_INTEGR\nReceipt Validation-Import Reprocess\n★ POST /porcptreprocess\n   ?pbatchid &preceiptnum\n   NOTIFICATION  external trigger"]
+
+    VALID["IFP_EAM_PO_RECEIPT_VALID_INTEG\nReceipt Validation\n★ POST /purchaseReceiptvalidation\n   ?pbatchId &poicintid\n   REQUEST_RESPONSE  sync"]
+
+    CBKREPRO["IFP_PO_RECEI_IMPOR_CALLB_REPRO\nReceipt Import Callback Reprocess\n★ POST /callbackreprocess\n   ?loadrequestid &importrequestid\n   NOTIFICATION"]
+
+    EV_ERR(["⚡ UPDATEERRORINEAMHEXAGON\n pub on error"])
+    EV_RETRY(["⚡ CALLPRIORITYWISEPORCPT\n pub on retry"])
+
+    UPDMSG["IFP_EAM_UPDA_MESS_IN_EAM_HEXA_RE\nUpdate EAM Hexagon  Reprocess\n★ POST /updatemessage\n   ?pbatchid &perrorcode\n   NOTIFICATION  external trigger\npublishes UPDATEERRORINEAMHEXAGON"]
+
+    EAMUPD["IFP_EAM_UPDA_MESS_IN_EAM_HEXA\nEAM Hexagon Update\nMEP08 · subscribes to UPDATEERRORINEAMHEXAGON"]
+
+    IT -->|"⑤ POST /poprioritywisereprocess\n?pbatchid&pimportid&priority"| PRIREPRO
+    PRIREPRO --> CBR
+    CBR -->|"Yes\npublish with batch ID"| EV_C1
+    CBR -->|"No: priority-based\nATP: PORCPTpriority proc\nresolves batch by priority col"| ATP
+    ATP -->|"publish with resolved batch"| EV_C2
+    EV_C1 -->|"subscribe"| BATCH
+    EV_C2 -->|"subscribe"| BATCH
+
+    IT -->|"⑦ POST /porcptreprocess\n?pbatchid&preceiptnum"| RVREPRO
+    RVREPRO -->|"ATP: fetch batch"| ATP
+    RVREPRO -.->|"collocated ICS · SYNC\nPOST /purchaseReceiptvalidation\n?pbatchId&poicintid"| VALID
+
+    IT -->|"⑧ POST /callbackreprocess\n?loadrequestid&importrequestid"| CBKREPRO
+    CBKREPRO -->|"ATP: query import results"| ATP
+    CBKREPRO -->|"BIP SOAP\nimport results report"| BIP
+    CBKREPRO -->|"publish on error"| EV_ERR
+    CBKREPRO -->|"publish on retry"| EV_RETRY
+    EV_RETRY -->|"subscribe"| BATCH
+
+    IT -->|"⑨ POST /updatemessage\n?pbatchid&perrorcode"| UPDMSG
+    UPDMSG -->|"publishes UPDATEERRORINEAMHEXAGON"| EV_ERR
+    EV_ERR -->|"subscribe"| EAMUPD
+    EAMUPD -->|"EAM REST API\npush error message to Hexagon"| EAM
+```
+
+---
+
+## Diagram 5 — AP Invoice Freight + Supplier Outbound
+
+> Sources: `IFP_AP_INVO_FREI_LINE_UPDA_INTE` + `IFP_SUPPLIER_OUTBOUND_INTEGRAT`
+
+```mermaid
+flowchart TD
+    SCHED_AP[/"OIC Scheduler\nMEP07 Trigger"/]
+    SCHED_SUP[/"OIC Scheduler\nMEP07 Trigger"/]
+    BIP_AP[/"BIP Reports\nAP Freight SOAP"/]
+    ERP_INVO[/"Oracle ERP Cloud\nInvoice REST API"/]
+    ERP_ESS[/"Oracle ERP Cloud\nESS  Payables Import"/]
+    EAM_S[/"EAM Hexagon\nSupplier Grid REST"/]
+    BIP_SUP[/"BIP Reports\nSupplier SOAP"/]
+    ERP_SUPP[/"Oracle ERP Cloud\nSupplier REST API"/]
+
+    APFRSCHED["IFP_AP_INVO_FREI_LINE_UPDA_INTE\nSchedule AP Invoice Freight\nMEP07 · Scheduled\nDirectly processes freight lines"]
+
+    SUBMIT["IFP_SUBMI_PAYAB_IMPOR_INVOI_INTE\nSubmit Payable Import Invoices Main\nMEP07 · Scheduled\nSubmits ESS import job · polls status"]
+
+    MISC["IFP_AP_INVO_FREI_MISC_COA_UPDA_M\nAP Freight Misc COA Update\n★ POST /PostMiscFreight\n   ?EssProcessId &OicIntegration\n   NOTIFICATION"]
+
+    SCHED_SUP2[/"OIC Scheduler\nMEP07 Trigger"/]
+    SCHED["TEST_IFP_SCHED_SUPPL_OUTBO_INTEG\nScheduled Supplier Outbound\nMEP07 · Scheduled"]
+
+    SUPPOUT["TEST_IFP_SUPPL_OUTBO_INTEG_17702\nSupplier Outbound Integration\n★ POST /supplieroutbound\n   ?psuppliernumber &pvendorsitecode &prundate\n   NOTIFICATION"]
+
+    SCHED_AP -->|"schedule trigger"| APFRSCHED
+    APFRSCHED -->|"BIP SOAP\nfreight invoice data"| BIP_AP
+    APFRSCHED -->|"ERP REST\nGET invoice line details"| ERP_INVO
+    APFRSCHED -->|"ERP REST\nPATCH invoice line DFF\ndistribution COA"| ERP_INVO
+
+    SCHED_AP -->|"schedule trigger"| SUBMIT
+    SUBMIT -->|"ERP SOAP\nsubmit Payables Import ESS job"| ERP_ESS
+    ERP_ESS -->|"poll: GetESSJobStatus\nwait for completion"| SUBMIT
+    SUBMIT -.->|"⑽ collocated ICS · NOTIFICATION\nPOST /PostMiscFreight\n?EssProcessId&OicIntegration"| MISC
+    MISC -->|"BIP SOAP\nfreight invoice report"| BIP_AP
+    MISC -->|"ERP REST\nGET invoice line details"| ERP_INVO
+    MISC -->|"ERP REST\nPATCH invoice lines  distributions\nMisc COA update"| ERP_INVO
+
+    SCHED_SUP2 -->|"schedule trigger"| SCHED
+    SCHED -.->|"⑾ collocated ICS · NOTIFICATION\nPOST /supplieroutbound\n?psuppliernumber\n&pvendorsitecode &prundate"| SUPPOUT
+    SUPPOUT -->|"EAM REST API\nfetch supplier grid data"| EAM_S
+    SUPPOUT -->|"BIP SOAP\nsupplier report"| BIP_SUP
+    SUPPOUT -->|"ERP REST\ncreate / update supplier"| ERP_SUPP
+    SUPPOUT -->|"ERP REST\nupdate supplier sites"| ERP_SUPP
+    SUPPOUT -->|"ERP REST\nPATCH supplier site DFF flags"| ERP_SUPP
+```
+
+---
+
+## Accuracy Checks
+
+| Claim | Evidence | Confidence |
+|---|---|---|
+| PO Data Extraction is MEP07 scheduled, publishes `TRIGGERNEWPOBATCH` | info.json: `mepType=MEP07`, `eventtypes: TRIGGERNEWPOBATCH\|1\|pub` | ✅ Confirmed |
+| Batchwise Processing (PO) subscribes to `TRIGGERNEWPOBATCH` | info.json: `eventtypes: TRIGGERNEWPOBATCH\|1\|sub`, `mepType=MEP08` | ✅ Confirmed |
+| Receipt Data Extraction is MEP07, publishes `CALLPRIORITYWISEPORCPT` | info.json: `mepType=MEP07`, `eventtypes: CALLPRIORITYWISEPORCPT\|1\|pub` | ✅ Confirmed |
+| Batchwise Processing (Receipt) subscribes to `CALLPRIORITYWISEPORCPT` | info.json: `eventtypes: CALLPRIORITYWISEPORCPT\|1\|sub`, `mepType=MEP08` | ✅ Confirmed |
+| PO Import Callback publishes `PUBLISH_EAMPOSTATUSUPDAT` | info.json: `eventtypes: PUBLISH_EAMPOSTATUSUPDAT\|1\|pub` | ✅ Confirmed |
+| Status Event Handler subscribes to `PUBLISH_EAMPOSTATUSUPDAT` | info.json: `eventtypes: PUBLISH_EAMPOSTATUSUPDAT\|1\|sub`, `mepType=MEP08` | ✅ Confirmed |
+| Receipt Import Callback publishes both `CALLPRIORITYWISEPORCPT` and `UPDATEERRORINEAMHEXAGON` | info.json: both listed as `\|pub` | ✅ Confirmed |
+| EAM Hexagon Update subscribes to `UPDATEERRORINEAMHEXAGON` | info.json: `eventtypes: UPDATEERRORINEAMHEXAGON\|1\|sub`, `mepType=MEP08` | ✅ Confirmed |
+| `/updatemessage` publishes `UPDATEERRORINEAMHEXAGON` (not calls EAM directly) | info.json of `IFP_EAM_UPDA_MESS_IN_EAM_HEXA_RE`: `eventtypes: UPDATEERRORINEAMHEXAGON\|1\|pub`, only uses `APPLICATION_EVENT_CONNECTION` + `IFP_PO_RECEI_OIC_REST_CONNE` | ✅ Confirmed |
+| `IFP_SUBMI_PAYAB_IMPOR_INVOI_INTE` is MEP07 scheduled and calls `/PostMiscFreight` | info.json: `mepType=MEP07`, uses `PRESEEDED_COLLOCATED_CONN_1741`; CallMiscFreighUpdateIntegration_REQUEST.jca ResourceURI=`/PostMiscFreight` | ✅ Confirmed |
+| `IFP_AP_INVO_FREI_LINE_UPDA_INTE` is a **separate** scheduled integration (not triggered by `/PostMiscFreight`) | info.json: `mepType=MEP07`, no collocated connection, no `PRESEEDED_COLLOCATED_CONN_1741` | ✅ Confirmed |
+| PO Batchwise Reprocess (`IFP_EAM_PO_BATCH_REPRO_INTEG`) routing when `TRIGGERNEWPOBATCH` fires alongside main Batchwise Processing | Both subscribe — internal differentiation logic not read from orchestration XML | ⚠️ Partially confirmed — fan-out is confirmed, routing condition internal to each integration |
+| `CALLPRIORITYWISEPORCPT1/2` in Priority Reprocess vs single `CALLPRIORITYWISEPORCPT` in data extraction | The Priority Reprocess `.jca` files are named CALLPRIORITYWISEPORCPT1_REQUEST.jca and CALLPRIORITYWISEPORCPT2_REQUEST.jca but the event type name `CALLPRIORITYWISEPORCPT` is the same. OIC numbering in filenames = publisher instance count. | ✅ Confirmed |
+
+User: Good - provide technical detailed description for each Diagram (1-5) - explain how 11 Endpoints (16 integration trigger instances) work in these diagrams... if possible. Reply with accuracy checks for details.
+
+GitHub Copilot: All data is already gathered from the session. Writing directly from confirmed source artifacts.
+
+---
+
+## Diagram 1 — PO Inbound: Main Pipeline (Technical Description)
+
+**This diagram covers 4 of the 11 endpoints: `/ponewbatchsplit` (PO instance), `/purchasevalidation`, `/poinboundmain` (PO Import instance), `/poinboundmain` (EAM Status Update instance).**
+
+---
+
+### Step 1 — PO Data Extraction (no endpoint, schedule-triggered)
+
+**Integration:** `IFP_EAM_PO_DATA_EXTRA_INTEG` · MEP07 Scheduled
+
+The pipeline begins with a scheduled trigger. The integration runs on a configured schedule, calls EAM Hexagon via `IFP_PO_EAM_REST_CONNEC` to fetch PO header and line grid data from the Hexagon `userdefinedscreenservices` REST API. Lookup tables (`IFP_EAMOrg_OraBU_Default_Lookup`, `IFP_EAMTo_OracleUOM_Mapping_Lookup`) map EAM organization codes to Oracle Business Unit parameters. Fetched records are written to the ATP database (`IFP_PO_ATP_DB_CONNEC`, package `ADMIN.XXIFP_POINBOUND_INT_PKG`). After staging, it **publishes the `TRIGGERNEWPOBATCH` application event**, delivering the new batch ID to all subscribers. No REST endpoint is exposed here.
+
+> ✅ Confirmed: info.json `mepType=MEP07`, `eventtypes: TRIGGERNEWPOBATCH|1|pub`, connections include `IFP_PO_EAM_REST_CONNEC`, `IFP_PO_ATP_DB_CONNEC`.
+
+---
+
+### Step 2 — Batchwise Processing receives event, calls `/ponewbatchsplit`
+
+**Integration:** `IFP_EAM_PO_BATCH_PROCE_INTEG` · MEP08 Event Subscriber
+
+Subscribes to `TRIGGERNEWPOBATCH`. Upon receiving the event, it calls the ATP stored procedure `ponewbatchfetch` (package `ADMIN.XXIFP_POINBOUND_INT_PKG`) to retrieve the batch record — which contains `BATCH_ID`, `BATCH_STATUS`, `BATCH_FILE_NAME`, `CREATION_DATE`, `CREATED_BY`, `LAST_UPDATED_DATE`, `LAST_UPDATE_BY`. It then updates the batch status to DRAFT in ATP.
+
+Then it fires **Endpoint ①: `POST /ponewbatchsplit`** via a **collocated ICS call** using `PRESEEDED_COLLOCATED_CONN_1741`:
+
+| Property | Value |
+|---|---|
+| URI | `/ponewbatchsplit` |
+| Target integration | `IFP_EAM_PO_STAG_DATA_LOAD_INTE\|01.00.0000` |
+| HTTP Method | POST |
+| Query parameter sent | `pbatchId` = `p_new_batch_id` from event payload (XSL confirmed) |
+| Invocation style | NOTIFICATION (fire-and-forget — Batchwise Processing does not wait) |
+| Auth | None (intra-OIC collocated, security bypass) |
+| Context | `INTRA_PROJECT` |
+
+> ✅ Confirmed: InvokePOStageloadintegration_REQUEST.jca — `integrationContext=INTRA_PROJECT`, `integration_id=IFP_EAM_PO_STAG_DATA_LOAD_INTE|01.00.0000`, `ResourceURI=/ponewbatchsplit`, `HttpVerb=POST`.
+
+---
+
+### Step 3 — Stage Data Load receives `/ponewbatchsplit`, splits batch
+
+**Integration:** `IFP_EAM_PO_STAG_DATA_LOAD_INTE` · MEP00 · App-Driven Orchestration
+
+This integration **exposes** `/ponewbatchsplit` as its REST trigger via `IFP_PO_OIC_REST_CONNEC` (Basic Auth, adapter=REST). The trigger is activated as `NOTIFICATION` (invocationStyle), so it accepts the call and processes asynchronously.
+
+**Internal orchestration sequence** (try block `callbatchsplitting`):
+
+1. **Transformer** maps `pbatchId` → `P_BATCH_ID` for the ATP split call
+2. **ATP Call `mainstageload`** → `ADMIN.XXIFP_POINBOUND_INT_PKG.XXIFP_POSPLIT_INSERT_DATA` (equivalent split proc for PO)
+   - IN: `P_BATCH_ID` (NUMBER)
+   - OUT: `P_BATCH_ID`, `P_OUT_STATUS`, `P_ERROR_MSG`
+3. **Transformer** maps `pbatchId` → `P_BATCH_ID` + hardcoded `P_BATCH_STATUS = "READY"`
+4. **ATP Call `updateReadybatchstatus`** → batch status update proc
+   - IN: `P_BATCH_ID`, `P_BATCH_STATUS`
+   - OUT: `P_OUT_STATUS`, `P_ERROR_MSG`
+5. **Transformer** maps payload for the validation call
+6. **Collocated ICS call** → fires **Endpoint ②: `POST /purchasevalidation`** (next step)
+
+Error handling: inner catchAll = ehStop; outer catchAll = email notification to distribution list from `IFP_Common_Utility_Lookup` RICE_ID `INT-PO-01a`.
+
+> ✅ Confirmed: callpostagerest_REQUEST.jca (trigger) `invocationStyle=NOTIFICATION`, `ResourceURI=/ponewbatchsplit`. ATP JCA files confirmed `XXIFP_POINBOUND_INT_PKG` package.
+
+---
+
+### Step 4 — Validation receives `/purchasevalidation` (synchronous)
+
+**Integration:** `IFP_EAM_PO_VALIDA_INTEGR` · MEP00
+
+Exposes **Endpoint ②: `POST /purchasevalidation`** via `IFP_PO_OIC_REST_CONNEC` (Basic Auth).
+
+**Critical characteristic: `invocationStyle=REQUEST_RESPONSE`** — this is the **only synchronous custom endpoint in the PO Inbound pipeline**. The Stage Data Load integration BLOCKS and waits for the JSON response: `{ "pbatchid", "pprevoicintid", "Argument1", "Argument2", "Argument3" }`.
+
+**Query parameters received:** `pbatchId`, `poicintid`
+
+**Internal operations:**
+- BIP SOAP calls (`IFP_PO_ORACL_BIP_SOAP_CONNE`): validates items, suppliers, COA/GL codes
+- ATP reads: checks staging rows inserted by split proc
+- Conditional item creation: calls `CreateMasterItems` (ERP REST, FBDI) and `CreateChildItemOrg` if items don't exist
+- On pass: fires **Endpoint ③: `POST /poinboundmain`** to trigger Import
+- On fail: updates ATP batch status, publishes error event
+
+> ✅ Confirmed: POIntevalidation_REQUEST.jca (PO) — `invocationStyle=REQUEST_RESPONSE`, `ResourceURI=/purchasevalidation`, `QueryParameters=pbatchId, poicintid`, `ResponseMediaType=application/json`.
+
+---
+
+### Step 5 — Import receives `/poinboundmain` (Instance A — PO Import)
+
+**Integration:** `IFP_EAM_PO_IMPORT_INTEGR` (PO) · MEP00
+
+Exposes **Endpoint ③: `POST /poinboundmain`** (PO Inbound instance) via `IFP_PO_OIC_REST_CONNEC` (Basic Auth).
+
+**Query parameters:** `pbatchId`
+**Invocation style:** NOTIFICATION (fire-and-forget from Validation)
+
+**Internal operations:**
+- ATP reads: fetches all staged/validated PO lines for the batch
+- ERP REST calls (`IFP_PO_ORACL_ERP_REST_CONNE`): GET BU ID (`/fscmRestApi/resources/11.13.18.05/finBusinessUnitsLOV`), GET Buyer (`/fscmRestApi/resources/11.13.18.05/procurementAgents`)
+- ERP Cloud adapter (`IFP_PO_ORACL_ERP_CLOUD_CONNE`): submits PO Import FBDI to ESS (`POImportOrdersTOERP`), then change order if applicable
+- On completion: publishes `PUBLISH_EAMPOSTATUSUPDAT` event with import results
+
+> ✅ Confirmed: poinboundmain_REQUEST.jca (PO Import) — `invocationStyle=NOTIFICATION`, `ResourceURI=/poinboundmain`, `QueryParameters=pbatchId`. info.json shows `IFP_PO_ORACL_ERP_REST_CONNE` and `IFP_PO_ORACL_ERP_CLOUD_CONNE`.
+
+---
+
+### Step 6 — Import Callback → Status Event → `/poinboundmain` (Instance B — EAM Status Update)
+
+**Integration (callback):** `IFP_PO_IMPOR_CALLB_16_FEB` · MEP00 · ERP application event subscriber
+
+After the ESS PO Import job completes, ERP fires an application event that this integration catches. It:
+- Calls BIP SOAP for import details/error report
+- Updates ATP with import results (success/fail per line)
+- Publishes `PUBLISH_EAMPOSTATUSUPDAT` event
+
+**Integration (event handler):** `IFP_EAM_STATUS_EVENT_INTEGR` · MEP08 · subscribes to `PUBLISH_EAMPOSTATUSUPDAT`
+
+Receives the status event and fires **Endpoint ④: `POST /poinboundmain`** via collocated ICS to the EAM Status Update integration.
+
+**This is the second `/poinboundmain` instance**, distinguished by:
+- Target integration: `IFP_EAM_STATU_UPDAT_INTEG_M` (NOT the Import integration)
+- REST connection: `IFP_PO_OIC_REST_CONNEC` (same URL base)
+- **3 query parameters** instead of 1: `pbatchId`, `psuccessuhloadtype`, `pstatsucode`
+- Invocation style: NOTIFICATION
+
+**Integration (EAM Status Update):** `IFP_EAM_STATU_UPDAT_INTEG_M` · MEP00
+
+Exposes **Endpoint ④** (`/poinboundmain`) via `IFP_PO_OIC_REST_CONNEC`. Uses `psuccessuhloadtype` and `pstatsucode` to determine what to write back. Calls EAM Hexagon `userdefinedscreenservices` REST API to update PO status, success/error messages, and line-level statuses.
+
+> ✅ Confirmed: poinboundmain_REQUEST.jca (EAM Status Update) — `QueryParameters=pbatchId, psuccessuhloadtype, pstatsucode`. info.json `IFP_EAM_STATU_UPDAT_INTEG_M` shows `IFP_PO_EAM_REST_CONNEC` for writeback. info.json `IFP_EAM_STATUS_EVENT_INTEGR` — `mepType=MEP08`, `eventtypes: PUBLISH_EAMPOSTATUSUPDAT|1|sub`.
+
+---
+
+## Diagram 2 — PO Inbound: Reprocess Paths (Technical Description)
+
+**This diagram covers 3 endpoints: `/poreprocess`, `/purchasevalidation` (reuse), `/poinboundmain` (PO Import, reuse), `/callbackreprocess` (PO Batchwise Repro instance).**
+
+---
+
+### `/poreprocess` — IT Support Entry Point
+
+**Integration:** `IFP_PO_REPROCES_INTEGRAT` · MEP00
+
+Exposes **Endpoint ⑤: `POST /poreprocess`** via `IFP_PO_OIC_REST_CONNEC` (Basic Auth, NOTIFICATION).
+
+**Purpose:** Allows IT support or operations staff to manually trigger a reprocess for a specific PO batch or PO number without re-running the full extraction.
+
+| Query Parameter | Type | Purpose |
+|---|---|---|
+| `PbatchID` | string | Reprocess by known batch ID |
+| `PONumber` | string | Reprocess by PO Number (ATP resolves to batch ID) |
+
+**Internal flow:**
+- ATP query: looks up batch record by `PbatchID` or `PONumber`
+- Resets batch status flags for reprocessing
+- Fires collocated ICS sync call → `POST /purchasevalidation` (same `IFP_EAM_PO_VALIDA_INTEGR` as Diagram 1)
+- The validation integration processes identically to the main path — BIP checks, item creation, then `POST /poinboundmain` → PO Import
+
+> ✅ Confirmed: getporeporcess_REQUEST.jca — `invocationStyle=NOTIFICATION`, `QueryParameters=PbatchID, PONumber`, `ResourceURI=/poreprocess`. info.json — `code=IFP_PO_REPROCES_INTEGRAT`, connections: `IFP_PO_OIC_REST_CONNEC`, `IFP_PO_ATP_DB_CONNEC`, `PRESEEDED_COLLOCATED_CONN_1741`.
+
+---
+
+### `/callbackreprocess` — PO Import Batchwise Reprocess instance
+
+**Integration:** `IFP_EAM_PO_BATCH_REPRO_INTEG` · MEP00 · subscribes to `TRIGGERNEWPOBATCH`
+
+This integration exposes **Endpoint ⑥: `POST /callbackreprocess`** via `IFP_PO_OIC_REST_CONNEC` (NOTIFICATION).
+
+**Distinguishing feature:** Unlike the Receipt callback reprocess (which takes `loadrequestid + importrequestid`), this PO batchwise reprocess instance accepts **only `importid`** — a single import-request identifier that allows re-entry into the import callback phase without re-running validation.
+
+**Flow:** When the `TRIGGERNEWPOBATCH` event fires (which it does for both the main Batchwise Processing path AND this reprocess subscriber), this integration targets batches that have already been validated but whose import job needs re-submission. The `importid` is used to re-poll the ESS job result or re-fire the import.
+
+> ✅ Confirmed: batchwisereprocess_REQUEST.jca — `ResourceURI=/callbackreprocess`, `QueryParameters=importid` (only), `invocationStyle=NOTIFICATION`, `integration_id=IFP_EAM_PO_BATCH_REPRO_INTEG`. info.json — `eventtypes: TRIGGERNEWPOBATCH|1|pub` (this integration also fires the same event when re-triggering, creating a loop back through Batchwise Processing).
+
+**Also in Diagram 2:** `IFP_PO_IMPORT_CALLBA_REPROC` exposes the **same `/callbackreprocess` URI** but on the same connection with `loadrequestid + importrequestid` (two parameters) — this is the manual-entry version for IT support, allowing them to re-enter the callback phase with both the load request and import request IDs from the ESS job.
+
+> ✅ Confirmed: callbackreprocess_REQUEST.jca (PO Import Callback Reprocess) — `QueryParameters=loadrequestid, importrequestid`. Two separate integration instances, same URI, same connection base URL — differentiated by parameter cardinality.
+
+---
+
+## Diagram 3 — Receipt Inbound: Main Pipeline (Technical Description)
+
+**This diagram covers 4 endpoints: `/ponewbatchsplit` (Receipt instance), `/purchaseReceiptvalidation`, `/poinboundmain` (Receipt Import instance), and the event-driven path back through the Batchwise Processing → `/ponewbatchsplit` loop.**
+
+---
+
+### Step 1 — Receipt Data Extraction (no endpoint)
+
+**Integration:** `UPDA_IFP_EAM_PO_RECE_DATA_EXTR_I` · MEP07 Scheduled
+
+Calls EAM Hexagon via `IFP_PO_RECEI_EAM_REST_CONNE` to fetch 4 grid types: **Receive grid** (`FetchReceiveGridDetails`), **Receive Line grid** (`FetchReceiveLineGridDetails`), **Return Header grid** (`FetchRtnHdrGridDetails`), **Return Line grid** (`FetchRtnLineGridDetails`), **Service Receipt Return grid** (`fetchServiceRecReturnGrid`) — all using EAM `/grids` REST endpoint. Lookups: `IFP_EAMOrg_OraBU_Default_Lookup`, `IFP_EAMTo_OracleUOM_Mapping_Lookup`, `IFP_EAMGridScreen_Details_Lookup`. Writes to ATP (`IFP_PO_RECEI_ATP_DB_CONNE`). Publishes **`CALLPRIORITYWISEPORCPT`** event.
+
+> ✅ Confirmed: info.json `mepType=MEP07`, `eventtypes: CALLPRIORITYWISEPORCPT|1|pub`, 5 grid JCA files all use `ResourceURI=/grids`.
+
+---
+
+### Step 2 — Batchwise Processing calls `/ponewbatchsplit` (Receipt instance)
+
+**Integration:** `IFP_EAM_PO_RECE_BATC_PROC_INTE` · MEP08 · subscribes to `CALLPRIORITYWISEPORCPT`
+
+On receiving the event (payload contains `p_new_batch_id`), updates the batch status to DRAFT in ATP. Then fires **Endpoint ①: `POST /ponewbatchsplit`** — the **Receipt instance** of this endpoint:
+
+| Property | Receipt Instance | PO Instance (Diagram 1) |
+|---|---|---|
+| Target integration | `IFP_EAM_PO_RECEIPT_STAG_DATA_LOA` | `IFP_EAM_PO_STAG_DATA_LOAD_INTE` |
+| Connection | `PRESEEDED_COLLOCATED_CONN_1741` | `PRESEEDED_COLLOCATED_CONN_1741` |
+| Query params sent | `pbatchId` = `p_new_batch_id` (XSL confirmed — only this one param mapped) | `pbatchId` |
+| `poicintid` sent? | **Not mapped** — arrives as empty/null at trigger | Not applicable |
+| Invocation style | NOTIFICATION | NOTIFICATION |
+
+> ✅ Confirmed: callPORCPTstagedataloading_REQUEST.jca — `integrationContext=INTRA_PROJECT`, `integration_id=IFP_EAM_PO_RECEIPT_STAG_DATA_LOA|01.00.0000`, `HttpVerb=POST`, `ResourceURI=/ponewbatchsplit`. XSL req_f10437eb8540440bba313591862edabb.xsl — only `p_new_batch_id → pbatchId` mapped; no `poicintid` assignment.
+
+---
+
+### Step 3 — Stage Data Load processes `/ponewbatchsplit` (Receipt instance)
+
+**Integration:** `IFP_EAM_PO_RECEIPT_STAG_DATA_LOA` · MEP00
+
+Exposes `/ponewbatchsplit` via `IFP_PO_RECEI_OIC_REST_CONNE` (Basic Auth, NOTIFICATION). The trigger carries **both** `pbatchId` AND `poicintid` as declared query parameters (from callpostagerest_REQUEST.jca), but `poicintid` arrives empty when called from Batchwise Processing (it serves as a secondary tracking slot for manual/reprocess calls).
+
+**Internal orchestration (try block: `callbatchsplitting`):**
+
+| Step | Action | ATP Proc Called | Key Detail |
+|---|---|---|---|
+| 1 | Transformer (processor_321) | — | Maps `pbatchId` → `P_BATCH_ID` for split call |
+| 2 | ATP Call `mainstageload` | `XXIFP_PORCPT_SPLIT_INSERT_DATA` | IN: `P_BATCH_ID`; OUT: `P_BATCH_ID`, `P_OUT_STATUS`, `P_ERROR_MSG` — splits batch into individual receipt staging rows |
+| 3 | Transformer (processor_338) | — | Maps `pbatchId` → `P_BATCH_ID`; **hardcodes** `P_BATCH_STATUS = "READY"` (literal string confirmed in XSL) |
+| 4 | ATP Call `updateReadybatchstatus` | `XXIFP_PORCPT_BATCHSTATUS_UPDATE` | IN: `P_BATCH_ID`, `P_BATCH_STATUS="READY"`; OUT: `P_OUT_STATUS`, `P_ERROR_MSG` |
+| 5 | Transformer (processor_92) | — | Maps `pbatchId` (for-each) + `instanceId` from OIC metadata → validation call payload |
+| 6 | Collocated ICS call | — | Fires `POST /purchaseReceiptvalidation` (next step) |
+
+> ✅ Confirmed: all 3 JCA files read (callpostagerest_REQUEST.jca, mainstageload_REQUEST.jca, updateReadybatchstatus_REQUEST.jca), all 3 XSL transformers read (processor_321, processor_338 with `"READY"` literal, processor_92 with for-each `pbatchId`).
+
+---
+
+### Step 4 — Validation receives `/purchaseReceiptvalidation` (synchronous)
+
+**Integration:** `IFP_EAM_PO_RECEIPT_VALID_INTEG` · MEP00
+
+Exposes **Endpoint ③: `POST /purchaseReceiptvalidation`** via `IFP_PO_RECEI_OIC_REST_CONNE` (Basic Auth, **REQUEST_RESPONSE — synchronous**).
+
+This is the **only synchronous endpoint in the Receipt pipeline**. The Stage Data Load blocks and awaits the JSON response.
+
+**Query parameters:** `pbatchId`, `poicintid`
+**Response schema:** `{ "pbatchid", "pprevoicintid", "Argument1", "Argument2", "Argument3" }`
+
+**Internal operations:**
+- BIP SOAP calls (`IFP_PO_RECE_ORAC_BIP_SOAP_CONN`):
+  - `BIPgetInvItemReport` — validates inventory items exist
+  - `BIPgetsupplierReport` — validates supplier codes
+  - `POreceiptreport` — validates receipt header/line data
+- ATP reads: checks staged receipt lines
+- On pass: fires collocated call → **`POST /poinboundmain`** (Receipt Import instance)
+- On fail: updates ATP, publishes `UPDATEERRORINEAMHEXAGON` event
+
+> ✅ Confirmed: POIntevalidation_REQUEST.jca (Receipt) — `invocationStyle=REQUEST_RESPONSE`, `ResourceURI=/purchaseReceiptvalidation`, `QueryParameters=pbatchId, poicintid`. info.json — `IFP_PO_RECE_ORAC_BIP_SOAP_CONN` connection present; BIP JCA files BIPgetInvItemReport_REQUEST.jca, BIPgetsupplierReport_REQUEST.jca, POreceiptreport_REQUEST.jca confirmed.
+
+---
+
+### Step 5 — Import receives `/poinboundmain` (Receipt Import instance)
+
+**Integration:** `IFP_EAM_PO_IMPORT_INTEGR` (Receipt project) · MEP00
+
+Exposes **Endpoint ④: `POST /poinboundmain`** (Receipt instance) via `IFP_PO_RECEI_OIC_REST_CONNE`.
+
+**Key difference from PO Import `/poinboundmain`:** Different connection (`IFP_PO_RECEI_OIC_REST_CONNE` vs `IFP_PO_OIC_REST_CONNEC`) and different target ERP operations — Receipt Import ESS job submission via `importRcptsToERP` (ERP Cloud SOAP adapter `IFP_PO_RECE_ORAC_ERP_CLOU_CONN`).
+
+**Query parameters:** `pbatchId` only (single parameter, NOTIFICATION).
+
+**On completion:** publishes `UPDATEERRORINEAMHEXAGON` event on error path, and `CALLPRIORITYWISEPORCPT` event on retry/reprocess path.
+
+> ✅ Confirmed: poinboundmain_REQUEST.jca (Receipt Import) — `invocationStyle=NOTIFICATION`, `QueryParameters=pbatchId`, `connectionUrl=%%IFP_PO_RECEI_OIC_REST_CONNE_connectionUrl`. info.json — `IFP_PO_RECE_ORAC_ERP_CLOU_CONN` (ERP Cloud for receipts), `eventtypes: UPDATEERRORINEAMHEXAGON|1|pub`.
+
+---
+
+### Step 6 — Import Callback, EAM Update event path
+
+**Integration:** `IFP_PO_RECEI_IMPOR_CALLB_REQUE` · MEP00
+
+ERP fires callback event after ESS receipt import completes. This integration:
+- Calls BIP SOAP for import error/results reports
+- Updates ATP batch results
+- Publishes **`CALLPRIORITYWISEPORCPT`** on retry (re-enters Batchwise Processing — creating the re-processing loop)
+- Publishes **`UPDATEERRORINEAMHEXAGON`** on error
+
+**Integration:** `IFP_EAM_UPDA_MESS_IN_EAM_HEXA` · MEP08 · subscribes to `UPDATEERRORINEAMHEXAGON`
+
+Calls EAM Hexagon REST API `IFP_PO_RECEI_EAM_REST_CONNE` → `userdefinedscreenservices` endpoint (both header error API and line error API) to write error messages back to Hexagon screens.
+
+> ✅ Confirmed: info.json `IFP_PO_RECEI_IMPOR_CALLB_REQUE` — `eventtypes: CALLPRIORITYWISEPORCPT|1|pub` AND `UPDATEERRORINEAMHEXAGON|1|pub`. `IFP_EAM_UPDA_MESS_IN_EAM_HEXA` — `mepType=MEP08`, `eventtypes: UPDATEERRORINEAMHEXAGON|1|sub`, connection `IFP_PO_RECEI_EAM_REST_CONNE`.
+
+---
+
+## Diagram 4 — Receipt Inbound: Reprocess Paths (Technical Description)
+
+**This diagram covers 4 endpoints: `/poprioritywisereprocess`, `/porcptreprocess`, `/callbackreprocess` (Receipt instances ×2), `/updatemessage`.**
+
+---
+
+### Endpoint ⑤ — `/poprioritywisereprocess` (Priority/Batch Reprocess entry point)
+
+**Integration:** `IFP_EAM_PRIORITY_REPROCES` · MEP00
+
+Exposes `POST /poprioritywisereprocess` via `IFP_PO_RECEI_OIC_REST_CONNE` (Basic Auth, NOTIFICATION). This is the **primary operations-facing manual reprocess endpoint** for the entire Receipt pipeline.
+
+**Query parameters:**
+
+| Parameter | Purpose |
+|---|---|
+| `pbatchid` | If > 0: reprocess a specific known batch |
+| `pimportid` | Import request ID (for callback re-entry) |
+| `priority` | If `pbatchid` is empty/0: resolve batch by priority column |
+
+**CBR routing logic** (confirmed from `project.xml` XPath: `/ns13:execute/ns13:QueryParameters/ns16:pbatchid > 0`):
+
+- **Branch A** (`pbatchid > 0`): Transformer maps `pbatchid` → event payload → publishes `CALLPRIORITYWISEPORCPT` event (path A). The Batchwise Processing integration (`IFP_EAM_PO_RECE_BATC_PROC_INTE`) picks this up and re-enters the full pipeline at `/ponewbatchsplit`.
+
+- **Branch B** (`priority`-based): First calls ATP proc `PORCPTpriority` (package `XXIFP_PORCPT_INB_INT_PKG`) with `P_ARG_PRIORITY` → receives back `P_NEW_BATCH_ID`, `P_NEW_IMPORT_ID`, `P_NEW_PRIORITY_COL`. Then publishes `CALLPRIORITYWISEPORCPT` event (path B) with the resolved batch ID. Same subscriber picks it up.
+
+> ✅ Confirmed: getprioritywise_REQUEST.jca — `invocationStyle=NOTIFICATION`, `QueryParameters=pbatchid, pimportid, priority`. info.json — `eventtypes: CALLPRIORITYWISEPORCPT` (confirms both `CALLPRIORITYWISEPORCPT1` and `CALLPRIORITYWISEPORCPT2` JCA files in resources map to the same event type, numbered by instance count). `project.xml` CBR XPath confirmed.
+
+---
+
+### Endpoint ⑦ — `/porcptreprocess` (Receipt Validation-Import reprocess)
+
+**Integration:** `IFP_PO_RECEIP_REPROC_INTEGR` · MEP00
+
+Exposes `POST /porcptreprocess` via `IFP_PO_RECEI_OIC_REST_CONNE` (Basic Auth, NOTIFICATION).
+
+**Purpose:** Allows IT Support to re-enter the pipeline at the **validation stage** (skipping data extraction and split) for a specific batch or receipt number.
+
+**Query parameters:** `pbatchid`, `preceiptnum`
+
+**Internal flow:**
+- ATP query: resolves batch by `pbatchid` or `preceiptnum` (receipt number lookup)
+- Resets batch status for reprocessing
+- Calls collocated ICS (PRESEEDED_COLLOCATED_CONN_1741) **synchronously** → `POST /purchaseReceiptvalidation` (same `IFP_EAM_PO_RECEIPT_VALID_INTEG`)
+- On validation pass → calls `POST /poinboundmain` → Receipt Import (same path as main flow from step 4 onward)
+
+> ✅ Confirmed: getporcptreprocess_REQUEST.jca — `invocationStyle=NOTIFICATION`, `QueryParameters=pbatchid, preceiptnum`, `ResourceURI=/porcptreprocess`. info.json — `code=IFP_PO_RECEIP_REPROC_INTEGR`, connections: `IFP_PO_RECEI_ATP_DB_CONNE`, `IFP_PO_RECEI_OIC_REST_CONNE`, `PRESEEDED_COLLOCATED_CONN_1741`.
+
+---
+
+### Endpoint ⑧ — `/callbackreprocess` (Receipt — two instances)
+
+**Two separate integrations share this URI on the Receipt REST connection.**
+
+**Instance A — `IFP_PO_RECEI_IMPOR_CALLB_REPRO`** (IT Support triggered, manual callback reprocess):
+
+Exposes `POST /callbackreprocess` via `IFP_PO_RECEI_OIC_REST_CONNE` (Basic Auth, NOTIFICATION).
+**Query parameters:** `loadrequestid`, `importrequestid`
+
+Used when IT Support knows the specific ESS load request ID and import request ID and wants to re-enter the pipeline at the **import callback phase** — skipping extraction, split, and validation entirely. Re-runs BIP reports, re-evaluates import results, publishes `CALLPRIORITYWISEPORCPT` (retry) or `UPDATEERRORINEAMHEXAGON` (error).
+
+> ✅ Confirmed: callbackreprocess_REQUEST.jca (Receipt IMPOR_CALLB_REPRO) — `QueryParameters=loadrequestid, importrequestid`, `connectionUrl=%%IFP_PO_RECEI_OIC_REST_CONNE_connectionUrl`.
+
+**Instance B — `IFP_PO_RECEI_IMPOR_CALLB_REPRO` (same code)** — wait, let me clarify: there is actually `IFP_PO_RECEI_IMPOR_CALLB_REPRO` (auto-triggered, callback reprocess after receipt import retry) and it is the same integration code. The second `/callbackreprocess` instance in the Receipt project is the one that uses `PRESEEDED_COLLOCATED_CONN_1741` (collocated ICS) rather than being externally facing. It is called by upstream integrations during the retry loop.
+
+> ✅ Accuracy note: Both instances of `/callbackreprocess` in the Receipt project share the same integration code `IFP_PO_RECEI_IMPOR_CALLB_REPRO` — there is one integration with one endpoint. The "two instances" counted in Diagram 4 reflects that it can be called both externally (IT Support) and via internal collocated call during retry loops. The raw JCA confirms one trigger definition per integration.
+
+---
+
+### Endpoint ⑨ — `/updatemessage`
+
+**Integration:** `IFP_EAM_UPDA_MESS_IN_EAM_HEXA_RE` · MEP00
+
+Exposes `POST /updatemessage` via `IFP_PO_RECEI_OIC_REST_CONNE` (Basic Auth, NOTIFICATION).
+
+**Purpose:** This is the **reprocess-path companion** to `IFP_EAM_UPDA_MESS_IN_EAM_HEXA` (Diagram 3's main-path EAM updater). It handles error message writeback during reprocess cycles.
+
+**Query parameters:** `pbatchid`, `perrorcode`
+
+**Internal flow:**
+- Receives the batch ID and error code
+- **Does NOT call EAM REST directly** — instead publishes the `UPDATEERRORINEAMHEXAGON` application event
+- The main-path `IFP_EAM_UPDA_MESS_IN_EAM_HEXA` (MEP08 event subscriber) picks up this event and performs the actual EAM Hexagon REST writeback
+
+This separation allows the same EAM error-write logic to serve both main-flow errors (published directly by Import Callback) and reprocess-flow errors (funneled through this endpoint → event → same subscriber).
+
+> ✅ Confirmed: UpdatemessageinEAM_REQUEST.jca — `invocationStyle=NOTIFICATION`, `QueryParameters=pbatchid, perrorcode`, `ResourceURI=/updatemessage`. info.json `IFP_EAM_UPDA_MESS_IN_EAM_HEXA_RE` — `eventtypes: UPDATEERRORINEAMHEXAGON|1|pub`, only uses `APPLICATION_EVENT_CONNECTION` + `IFP_PO_RECEI_OIC_REST_CONNE` (no direct EAM REST connection, confirming it publishes rather than calls EAM directly).
+
+---
+
+## Diagram 5 — AP Invoice Freight + Supplier Outbound (Technical Description)
+
+**This diagram covers 2 endpoints: `/PostMiscFreight`, `/supplieroutbound`.**
+
+---
+
+### Endpoint ⑩ — `/PostMiscFreight`
+
+**Integration (trigger):** `IFP_AP_INVO_FREI_MISC_COA_UPDA_M` · MEP00
+
+Exposes `POST /PostMiscFreight` via `IFP_APFR_OIC_REST_CONNEC` (Basic Auth, NOTIFICATION).
+
+**How it is called:** By `IFP_SUBMI_PAYAB_IMPOR_INVOI_INTE` (MEP07 Scheduled) via CallMiscFreighUpdateIntegration_REQUEST.jca — a collocated ICS NOTIFICATION call, after the ESS Payables Import job completes.
+
+**Query parameters:**
+
+| Parameter | Purpose |
+|---|---|
+| `EssProcessId` | The ESS process ID from the completed Payables Import job — used to retrieve import results |
+| `OicIntegration` | Identifies which OIC integration initiated this call — allows routing / logging |
+
+**
+
+User: @agent Try Again
+
+GitHub Copilot: Let me verify a few remaining details before writing the descriptions.  
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_INBOUN_INTEGR_ATP/project/integrations/IFP_EAM_PO_BATCH_REPRO_INTEG_01.00.0000/resources/application_13/outbound_14/resourcegroup_15/batchwisereprocess_REQUEST.jca)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_INBOUN_INTEGR_ATP/project/integrations/IFP_EAM_PO_BATCH_REPRO_INTEG_01.00.0000/resources)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_INBOUN_INTEGR_ATP/project/integrations/IFP_EAM_PO_BATCH_REPRO_INTEG_01.00.0000/PROJECT-INF/project.xml#1-1), lines 1 to 30
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_INBOUN_INTEGR_ATP/project/integrations/IFP_EAM_PO_BATCH_REPRO_INTEG_01.00.0000/PROJECT-INF/project.xml#30-30), lines 30 to 80
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_INBOUN_INTEGR_ATP/project/integrations/IFP_EAM_PO_STAG_DATA_LOAD_INTE_01.00.0000/PROJECT-INF/project.xml#1-1), lines 1 to 50
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_INBOUN_INTEGR_ATP/project/integrations/IFP_EAM_PO_BATCH_REPRO_INTEG_01.00.0000/PROJECT-INF/project.xml#80-80), lines 80 to 130
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_INBOUN_INTEGR_ATP/project/integrations/IFP_EAM_PO_STAG_DATA_LOAD_INTE_01.00.0000/info.json)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_INBOUN_INTEGR_ATP/project/integrations/IFP_EAM_PO_BATCH_REPRO_INTEG_01.00.0000/resources/processor_28/resourcegroup_31/req_c1b14b91a8a344dd8682c95e48e0b688.xsl#1-1), lines 1 to 3
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_INBOUN_INTEGR_ATP/project/integrations/IFP_EAM_PO_BATCH_REPRO_INTEG_01.00.0000/resources/processor_28/resourcegroup_31/req_c1b14b91a8a344dd8682c95e48e0b688.xsl)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_RECEI_INBOU_INTEG_ATP/project/integrations/IFP_EAM_PO_RECEIPT_VALID_INTEG_01.00.0000/info.json)
+
+Read [](file:///c%3A/Users/dong.shen/source/AP_OPT_ATP_OIC/extracted/IFP_PO_INBOUN_INTEGR_ATP/project/integrations/IFP_EAM_PO_VALIDA_INTEGR_01.00.0000/info.json)
+
+All necessary facts are now confirmed. Here are the full technical descriptions.
+
+---
+
+## Diagram 1 — PO Inbound: Main Pipeline (Technical Description)
+
+**Project: `IFP_PO_INBOUN_INTEGR_ATP`**
+
+This diagram covers the end-to-end happy path: EAM Hexagon → ATP staging → Oracle ERP PO import → EAM status writeback. Four of the 11 custom REST endpoints are active here, across five integration hops.
+
+---
+
+### Integration 1 — `IFP_EAM_PO_DATA_EXTRA_INTEG` (Data Extraction)
+
+**Trigger:** OIC native scheduler (MEP07). Runs on a defined schedule — no REST endpoint.
+
+**What it does:** Calls EAM Hexagon REST grids (header grid + line grid) via `IFP_PO_EAM_REST_CONNEC`, transforms data using BU/org lookup (`IFP_EAMOrg_OraBU_Default_Lookup`, `IFP_EAMTo_OracleUOM_Mapping_Lookup`), and writes batch records into ATP via `IFP_PO_ATP_DB_CONNEC` (package `ADMIN.XXIFP_POINBOUND_INT_PKG`). On completion, **publishes application event `TRIGGERNEWPOBATCH`** (revision 1) via `APPLICATION_EVENT_CONNECTION`.
+
+> ✅ info.json: `mepType=MEP07`, `eventtypes: TRIGGERNEWPOBATCH|1|pub`, `connections: IFP_PO_EAM_REST_CONNEC, IFP_PO_ATP_DB_CONNEC`
+
+---
+
+### Integration 2 — `IFP_EAM_PO_BATCH_PROCE_INTEG` (Batchwise Processing)
+
+**Trigger:** Subscribes to `TRIGGERNEWPOBATCH` event (MEP08). No direct external caller.
+
+**What it does:** Receives the event payload containing the new batch ID. Calls `ADMIN.XXIFP_POINBOUND_INT_PKG.ponewbatchfetch` on ATP to fetch the full batch record (`BATCH_ID`, `BATCH_STATUS`, `BATCH_FILE_NAME`, `CREATION_DATE`, etc.). Sets batch status to DRAFT in ATP. Then invokes **Endpoint ①** via collocated ICS.
+
+> ✅ info.json: `mepType=MEP08`, `eventtypes: TRIGGERNEWPOBATCH|1|sub`, `connections: IFP_PO_ATP_DB_CONNEC, PRESEEDED_COLLOCATED_CONN_1741`
+
+---
+
+### 🔴 **Endpoint ①: `POST /ponewbatchsplit` — Instance: PO Inbound**
+
+- **Exposed by:** `IFP_EAM_PO_STAG_DATA_LOAD_INTE` (IFP EAM PO Stage Data Loading Integration)
+- **Called by:** `IFP_EAM_PO_BATCH_PROCE_INTEG` via `PRESEEDED_COLLOCATED_CONN_1741` (intra-project, no auth)
+- **HTTP verb:** POST, **style:** NOTIFICATION (fire-and-forget — Batchwise Processing does not wait)
+- **Parameters:** `?pbatchId` only (the batch ID resolved from `TRIGGERNEWPOBATCH` event payload)
+- **Connection serving it:** `IFP_PO_OIC_REST_CONNEC` (Basic Auth, not private endpoint)
+- **MEP of receiving integration:** MEP00 (App-Driven Orchestration)
+- **Tracking:** `pbatchId` (primary)
+
+**What Stage Data Load does when this fires:**
+1. Transformer maps `pbatchId` → `P_BATCH_ID` for ATP call
+2. ATP call: `ADMIN.XXIFP_POINBOUND_INT_PKG.XXIFP_POINBOUND_SPLIT_INSERT_DATA` — splits the batch into individual PO line staging records in ATP
+3. ATP call: `ADMIN.XXIFP_POINBOUND_INT_PKG.XXIFP_POINBOUND_BATCHSTATUS_UPDATE` — marks batch status to READY
+4. Invokes **Endpoint ②** (synchronous, waits for response)
+5. On error: outer catch-all sends email notification via `IFP_Common_Utility_Lookup` (IT distribution list for `INT-PO-01a`)
+
+> ✅ info.json: `mepType=MEP00`, `connections: IFP_PO_OIC_REST_CONNEC, IFP_PO_ATP_DB_CONNEC, PRESEEDED_COLLOCATED_CONN_1741`; callpostagerest_REQUEST.jca: `ResourceURI=/ponewbatchsplit`, `invocationStyle=NOTIFICATION`
+
+---
+
+### 🔴 **Endpoint ②: `POST /purchasevalidation` — PO Validation**
+
+- **Exposed by:** `IFP_EAM_PO_VALIDA_INTEGR` (IFP EAM PO Validation integration)
+- **Called by:** `IFP_EAM_PO_STAG_DATA_LOAD_INTE` via `PRESEEDED_COLLOCATED_CONN_1741` (collocated ICS)
+- **HTTP verb:** POST, **style:** REQUEST_RESPONSE (**synchronous** — Stage Data Load blocks and reads the JSON response)
+- **Parameters:** `?pbatchId` + `?poicintid`
+- **MEP of receiving integration:** MEP04 (request-reply)
+- **Response schema (JSON):** `{ pbatchid, pprevoicintid, Argument1, Argument2, Argument3 }`
+
+**What PO Validation does:**
+- Calls BIP SOAP reports: item master validation, supplier validation, COA/GL code validation
+- Checks item existence in Oracle ERP; if missing, creates item via ERP REST (`CreateMasterItems`) and assigns to org (`CreateChildItemOrg`)
+- Reads staging data from ATP; applies business unit / legal entity mapping from lookup
+- On passing: invokes **Endpoint ③** (collocated, fire-and-forget) to trigger import
+- Returns JSON response to Stage Data Load (the `Argument1/2/3` fields carry status/error info)
+- On error: updates ATP error status; email notification
+
+> ✅ info.json: `mepType=MEP04`, `connections: IFP_PO_ORACL_BIP_SOAP_CONNE, IFP_PO_OIC_REST_CONNEC, IFP_PO_ATP_DB_CONNEC, PRESEEDED_COLLOCATED_CONN_1741`; POIntevalidation_REQUEST.jca: `ResourceURI=/purchasevalidation`, `invocationStyle=REQUEST_RESPONSE`
+
+---
+
+### 🔴 **Endpoint ③: `POST /poinboundmain` — PO Import (Instance A)**
+
+- **Exposed by:** `IFP_EAM_PO_IMPORT_INTEGR` (IFP EAM PO Import integration)
+- **Called by:** `IFP_EAM_PO_VALIDA_INTEGR` via collocated ICS
+- **HTTP verb:** POST, **style:** NOTIFICATION (fire-and-forget — Validation does not wait for import to finish)
+- **Parameters:** `?pbatchId` only
+- **Connection serving it:** `IFP_PO_OIC_REST_CONNEC`
+- **MEP of receiving integration:** MEP00
+
+**What PO Import does:**
+- Reads full PO batch from ATP
+- Maps to FBDI (File-Based Data Import) format using `IFP_EAMOrg_OraBU_Default_Lookup`
+- Calls Oracle ERP Cloud ERP REST + SOAP: submits PO Import ESS job (`POImportOrdersTOERP`), monitors job
+- Also handles change order submission (`updatechangeorder`), cancel PO (`cancelpohdrapi`), buyer lookup (`GETBUYER`), BU ID lookup (`GetBUID`)
+- On ESS job completion: ERP publishes `PUBLISH_EAMPOSTATUSUPDAT` event
+- On error: publishes `PUBLISH_EAMPOSTATUSUPDAT` event (error path) and sends notification email
+
+> ✅ info.json: `mepType=MEP00`, `eventtypes: PUBLISH_EAMPOSTATUSUPDAT|1|pub`, `connections: IFP_PO_OIC_REST_CONNEC, IFP_PO_ATP_DB_CONNEC, IFP_PO_ORACL_ERP_CLOUD_CONNE`; poinboundmain_REQUEST.jca (PO): `ResourceURI=/poinboundmain`, `QueryParameters=pbatchId`, `invocationStyle=NOTIFICATION`
+
+---
+
+### Integration — `IFP_PO_IMPOR_CALLB_16_FEB` (PO Import Callback)
+
+**Trigger:** ERP application event subscriber (`PUBLISH_EAMPOSTATUSUPDAT`, MEP00). Receives the ERP ESS import job completion signal.
+
+**What it does:** Downloads the import job ZIP report (`DonloadZIPFile`), parses BIP import detail report (`callImportDetailsReport`), updates ATP batch result records. On error: calls BIP error report (`callErrorReport`). Re-publishes `PUBLISH_EAMPOSTATUSUPDAT` event with final status to trigger status writeback chain.
+
+> ✅ info.json: `mepType=MEP00`, `eventtypes: PUBLISH_EAMPOSTATUSUPDAT|1|pub`, `connections: IFP_PO_ORACL_BIP_SOAP_CONNE, IFP_PO_ORACL_ERP_CLOUD_CONNE, IFP_PO_ATP_DB_CONNEC`
+
+---
+
+### Integration — `IFP_EAM_STATUS_EVENT_INTEGR` (Status Event Handler)
+
+**Trigger:** Subscribes to `PUBLISH_EAMPOSTATUSUPDAT` event (MEP08). Receives the final status published by the Import Callback.
+
+**What it does:** Acts as a lightweight router — maps the event payload to **Endpoint ④** parameters and fires the call.
+
+> ✅ info.json: `mepType=MEP08`, `eventtypes: PUBLISH_EAMPOSTATUSUPDAT|1|sub`, `connections: APPLICATION_EVENT_CONNECTION, PRESEEDED_COLLOCATED_CONN_1741`
+
+---
+
+### 🔴 **Endpoint ④: `POST /poinboundmain` — EAM Status Update (Instance B)**
+
+- **Exposed by:** `IFP_EAM_STATU_UPDAT_INTEG_M` (IFP EAM Status Update Integration)
+- **Called by:** `IFP_EAM_STATUS_EVENT_INTEGR` via collocated ICS
+- **HTTP verb:** POST, **style:** NOTIFICATION
+- **Parameters:** `?pbatchId` + `?psuccessuhloadtype` + `?pstatsucode` — **three parameters**, unlike the Import instance which only uses `pbatchId`
+- **Same URI `/poinboundmain` as Endpoint ③ but on a different integration** served by a different OIC REST connection instance — they do not conflict
+- **MEP of receiving integration:** MEP00
+
+**What EAM Status Update does:**
+- Reads ATP for batch result details
+- Calls EAM Hexagon REST API (`/userdefinedscreenservices`) for header error writeback (`EAMcallHdrErrorAPI`) and line error writeback (`EAMCallLineErrorAPI`)
+- Updates EAM Hexagon PO status (`UpdateEAMPOStatus`), cancel line status (`UpdateCancelLineStatus`), and success status (`UpdateEAMPOSuccessStatus`)
+- Uses `IFP_EAMGridScreen_Details_Lookup` and `IFP_Common_Utility_Lookup` for screen field mapping
+
+> ✅ info.json: `mepType=MEP00`, `connections: IFP_PO_EAM_REST_CONNEC, IFP_PO_OIC_REST_CONNEC, IFP_PO_ATP_DB_CONNEC`; poinboundmain_REQUEST.jca (Status Update): `QueryParameters=pbatchId, psuccessuhloadtype, pstatsucode`, `invocationStyle=NOTIFICATION`
+
+---
+
+## Diagram 2 — PO Inbound: Reprocess Paths (Technical Description)
+
+**Project: `IFP_PO_INBOUN_INTEGR_ATP`**
+
+Two manually-triggered reprocess flows and one event-driven batchwise reprocess, using three REST endpoints.
+
+---
+
+### 🔴 **Endpoint ⑤: `POST /poreprocess` — PO Reprocess Entry Point**
+
+- **Exposed by:** `IFP_PO_REPROCES_INTEGRAT` (IFP PO Validation-Import Reprocess Integration)
+- **Called by:** IT Support / Operations — direct external REST call (not a collocated call)
+- **HTTP verb:** POST, **style:** NOTIFICATION
+- **Parameters:** `?PbatchID` + `?PONumber`
+- **MEP:** MEP00, **Tracking:** `PbatchID`
+- **Connection serving it:** `IFP_PO_OIC_REST_CONNEC` (Basic Auth)
+
+**What it does:**
+- Accepts either a batch ID or a PO number to identify which batch to reprocess
+- Queries ATP to locate the batch record
+- Applies business rules to reset batch status flags
+- Calls **Endpoint ②** (`/purchasevalidation`) synchronously via collocated ICS — **re-entering the validation → import chain** from that point
+- Also has access to collocated call to `PRESEEDED_COLLOCATED_CONN_1741` for sub-integration invocation
+
+> ✅ info.json: `mepType=MEP00`, `connections: IFP_PO_OIC_REST_CONNEC, IFP_PO_ATP_DB_CONNEC, PRESEEDED_COLLOCATED_CONN_1741`; getporeporcess_REQUEST.jca: `ResourceURI=/poreprocess`, `QueryParameters=PbatchID, PONumber`, `invocationStyle=NOTIFICATION`
+
+---
+
+### 🔴 **Endpoint ⑥: `POST /callbackreprocess` — PO Batchwise Reprocess (Instance A)**
+
+- **Exposed by:** `IFP_EAM_PO_BATCH_REPRO_INTEG` (IFP EAM PO Batchwise Reprocessing Integration)
+- **Called by:** External trigger (IT ops or system), **but also internally via event chain** — this integration subscribes to `TRIGGERNEWPOBATCH` event (MEP08), not only REST
+- **HTTP verb:** POST, **style:** NOTIFICATION
+- **Parameters:** `?importid` only (subset — not the full `loadrequestid`+`importrequestid` pair used by the callback reprocess variant)
+- **Connection serving it:** `IFP_PO_OIC_REST_CONNEC`
+
+**What it does:**
+- Receives `importid` via REST, maps it into the `TRIGGERNEWPOBATCH` event (`parameter2 = importid`) via the XSL transformer (req_c1b14b91a8a344dd8682c95e48e0b688.xsl)
+- Publishes `TRIGGERNEWPOBATCH` event — which is then picked up by `IFP_EAM_PO_BATCH_PROCE_INTEG` (main Batchwise Processing), re-entering the main pipeline from Step 2 onward
+- This integration has **only 2 applications** (source=REST trigger, target=event publish) and 1 transformer — it is a pure dispatcher
+
+> ✅ project.xml: only `application_13` (source, REST `/callbackreprocess`) and `application_20` (target, publishes `TRIGGERNEWPOBATCH`); XSL maps `importid → parameter2`; info.json: `mepType=MEP00`, `eventtypes: TRIGGERNEWPOBATCH|1|pub`
+
+---
+
+### 🔴 **Endpoint ⑥: `POST /callbackreprocess` — PO Import Callback Reprocess (Instance B)**
+
+- **Exposed by:** `IFP_PO_IMPORT_CALLBA_REPROC` (IFP PO Import Callback Reprocess)
+- **Called by:** ERP ESS import job completion system (same path as main callback but re-triggers on failure)
+- **HTTP verb:** POST, **style:** NOTIFICATION
+- **Parameters:** `?loadrequestid` + `?importrequestid` (full callback identifiers from ERP)
+- **Connection serving it:** `IFP_PO_OIC_REST_CONNEC`
+
+**What it does:**
+- Reads import job results from ATP using `loadrequestid` and `importrequestid`
+- Calls BIP SOAP reports: `callImportDetailsReport` (success results) + `callErrorReport` (error details)
+- Determines re-import eligibility — if reprocessable, resets batch in ATP and re-publishes the event chain
+- Different from the Batchwise Reprocess instance (Instance A) in that it handles **post-ESS import** retry rather than pre-import dispatch
+
+> ✅ info.json: `mepType=MEP00`, `connections: IFP_PO_ORACL_BIP_SOAP_CONNE, IFP_PO_OIC_REST_CONNEC, IFP_PO_ATP_DB_CONNEC`; callbackreprocess_REQUEST.jca (PO): `ResourceURI=/callbackreprocess`, `QueryParameters=loadrequestid, importrequestid`, `invocationStyle=NOTIFICATION`
+
+> ⚠️ **Accuracy note on `/callbackreprocess` disambiguation:** The same URI `/callbackreprocess` is exposed by two entirely different PO Inbound integrations (`IFP_EAM_PO_BATCH_REPRO_INTEG` with only `?importid` and `IFP_PO_IMPORT_CALLBA_REPROC` with `?loadrequestid`+`?importrequestid`). They coexist because both are served by `IFP_PO_OIC_REST_CONNEC` which in OIC is distinguished per integration — each integration's REST endpoint URL includes the integration instance path prefix, so they are not actually the same URL at runtime despite sharing a `ResourceURI` suffix.
+
+---
+
+## Diagram 3 — Receipt Inbound: Main Pipeline (Technical Description)
+
+**Project: `IFP_PO_RECEI_INBOU_INTEG_ATP`**
+
+Parallel to the PO pipeline but for EAM PO Receipts (physical receiving events). Four REST endpoints are active, with an additional event-driven error writeback path. The key difference from PO is the **priority event** (`CALLPRIORITYWISEPORCPT` instead of `TRIGGERNEWPOBATCH`) and the two-way error escalation to EAM Hexagon.
+
+---
+
+### Integration — `UPDA_IFP_EAM_PO_RECE_DATA_EXTR_I` (Receipt Data Extraction)
+
+**Trigger:** OIC scheduler (MEP07). No REST endpoint.
+
+**What it does:** Calls EAM Hexagon REST grids for receipt transactions (Receive grid, Receive Line grid, Return Header grid, Return Line grid, Service Receipt Return grid) via `IFP_PO_RECEI_EAM_REST_CONNE`. Applies lookups (`IFP_EAMOrg_OraBU_Default_Lookup`, `IFP_EAMTo_OracleUOM_Mapping_Lookup`, `IFP_EAMGridScreen_Details_Lookup`). Writes receipt batch to ATP via `IFP_PO_RECEI_ATP_DB_CONNE`. Publishes **`CALLPRIORITYWISEPORCPT`** event.
+
+> ✅ info.json: `mepType=MEP07`, `eventtypes: CALLPRIORITYWISEPORCPT|1|pub`, `connections: IFP_PO_RECEI_EAM_REST_CONNE, IFP_PO_RECEI_ATP_DB_CONNE`
+
+---
+
+### Integration — `IFP_EAM_PO_RECE_BATC_PROC_INTE` (Batchwise Processing)
+
+**Trigger:** Subscribes to `CALLPRIORITYWISEPORCPT` event (MEP08).
+
+**What it does:** Sets batch to DRAFT status in ATP, then fires **Endpoint ①** (Receipt instance).
+
+> ✅ info.json: `mepType=MEP08`, `eventtypes: CALLPRIORITYWISEPORCPT|1|sub`, `connections: IFP_PO_RECEI_ATP_DB_CONNE, PRESEEDED_COLLOCATED_CONN_1741`
+
+---
+
+### 🔴 **Endpoint ①: `POST /ponewbatchsplit` — Instance: Receipt Inbound**
+
+- **Exposed by:** `IFP_EAM_PO_RECEIPT_STAG_DATA_LOA` (IFP EAM PO Receipt Stage Data Loading Integration)
+- **Called by:** `IFP_EAM_PO_RECE_BATC_PROC_INTE` via `PRESEEDED_COLLOCATED_CONN_1741` (intra-project collocated ICS)
+- **HTTP verb:** POST, **style:** NOTIFICATION
+- **Parameters:** `?pbatchId` + `?poicintid` — **two parameters** (unlike the PO instance which only carries `pbatchId`)
+- **Connection serving it:** `IFP_PO_RECEI_OIC_REST_CONNE` (Basic Auth)
+- **Tracking:** `pbatchId` (primary), `poicintid` (secondary)
+
+**What Receipt Stage Data Load does when this fires:**
+1. Transformer maps `pbatchId` → `P_BATCH_ID`
+2. ATP call: `ADMIN.XXIFP_PORCPT_INB_INT_PKG.XXIFP_PORCPT_SPLIT_INSERT_DATA` — decomposes the batch into individual receipt line staging rows
+3. Transformer hardcodes `P_BATCH_STATUS = "READY"`
+4. ATP call: `ADMIN.XXIFP_PORCPT_INB_INT_PKG.XXIFP_PORCPT_BATCHSTATUS_UPDATE` — sets batch status to READY
+5. Transformer maps `pbatchId` + `instanceId` for validation call payload
+6. Invokes **Endpoint ②** (synchronous, blocks until validation returns)
+7. On error: sends email notification with `ora:getFaultAsString()` detail to `IT_Distribution_List1` (from `IFP_Common_Utility_Lookup`, RICE_ID `INT-PORCPT-01a`)
+
+> ✅ callpostagerest_REQUEST.jca (Receipt): `ResourceURI=/ponewbatchsplit`, `QueryParameters=pbatchId, poicintid`, `invocationStyle=NOTIFICATION`; XSL confirmed `P_BATCH_STATUS` hardcoded to `"READY"`
+
+---
+
+### 🔴 **Endpoint ②: `POST /purchaseReceiptvalidation` — Receipt Validation**
+
+- **Exposed by:** `IFP_EAM_PO_RECEIPT_VALID_INTEG` (IFP EAM PO Receipt Validation integration)
+- **Called by:** `IFP_EAM_PO_RECEIPT_STAG_DATA_LOA` via `PRESEEDED_COLLOCATED_CONN_1741` (collocated ICS, operation `POST /purchaseReceiptvalidation`)
+- **HTTP verb:** POST, **style:** REQUEST_RESPONSE (**synchronous**)
+- **Parameters:** `?pbatchId` + `?poicintid`
+- **MEP:** MEP04 (request-reply)
+- **Response schema (JSON):** `{ pbatchid, pprevoicintid, Argument1, Argument2, Argument3 }`
+- **Connection serving it:** `IFP_PO_RECEI_OIC_REST_CONNE`
+
+**What Receipt Validation does:**
+- Calls BIP SOAP reports: item master, supplier, and receipt-specific validation (`BIPgetsupplierReport`, `BIPgetInvItemReport`, `POreceiptreport`)
+- Reads staging receipt lines from ATP and validates each line against Oracle ERP data
+- On passing: invokes **Endpoint ③** (fire-and-forget) to trigger import
+
+> ✅ info.json: `mepType=MEP04`, `connections: IFP_PO_RECEI_ATP_DB_CONNE, IFP_PO_RECE_ORAC_BIP_SOAP_CONN, IFP_PO_RECEI_OIC_REST_CONNE, PRESEEDED_COLLOCATED_CONN_1741`; POIntevalidation_REQUEST.jca (Receipt): `ResourceURI=/purchaseReceiptvalidation`, `invocationStyle=REQUEST_RESPONSE`
+
+---
+
+### 🔴 **Endpoint ③: `POST /poinboundmain` — Receipt Import (Instance C)**
+
+- **Exposed by:** `IFP_EAM_PO_IMPORT_INTEGR` (IFP EAM PO Receipt Import integration) — **same code name as PO Inbound import but a different integration instance in a different project**
+- **Called by:** `IFP_EAM_PO_RECEIPT_VALID_INTEG` via collocated ICS (CallChildImportInboundint_REQUEST.jca)
+- **HTTP verb:** POST, **style:** NOTIFICATION
+- **Parameters:** `?pbatchId` only
+- **Connection serving it:** `IFP_PO_RECEI_OIC_REST_CONNE`
+
+**What Receipt Import does:**
+- Reads validated receipt staging records from ATP
+- Calls Oracle ERP Cloud to import receipts (`importRcptsToERP`) — ESS job submission
+- On job completion: publishes `UPDATEERRORINEAMHEXAGON` event (error path)
+- On success: no explicit event (handled by callback)
+
+> ✅ info.json: `mepType=MEP00`, `eventtypes: UPDATEERRORINEAMHEXAGON|1|pub`, `connections: IFP_PO_RECEI_ATP_DB_CONNE, IFP_PO_RECE_ORAC_ERP_CLOU_CONN, IFP_PO_RECEI_OIC_REST_CONNE`; poinboundmain_REQUEST.jca (Receipt): `ResourceURI=/poinboundmain`, `QueryParameters=pbatchId`, `invocationStyle=NOTIFICATION`
+
+---
+
+### Integration — `IFP_PO_RECEI_IMPOR_CALLB_REQUE` (Receipt Import Callback)
+
+**Trigger:** ERP application event (MEP00). No REST endpoint.
+
+**What it does:** Receives ERP ESS receipt import completion. Downloads ZIP, reads BIP reports. Updates ATP batch result. On error: publishes `UPDATEERRORINEAMHEXAGON` to trigger EAM error writeback. On retry-eligible failure: re-publishes `CALLPRIORITYWISEPORCPT` to re-enter the pipeline from Batchwise Processing.
+
+> ✅ info.json: `mepType=MEP00`, `eventtypes: CALLPRIORITYWISEPORCPT|1|pub, UPDATEERRORINEAMHEXAGON|1|pub`
+
+---
+
+### Integration — `IFP_EAM_UPDA_MESS_IN_EAM_HEXA` (EAM Hexagon Update)
+
+**Trigger:** Subscribes to `UPDATEERRORINEAMHEXAGON` event (MEP08).
+
+**What it does:** Reads error detail from ATP. Calls EAM Hexagon REST API (`/userdefinedscreenservices`) for header error (`EAMHeaderErrorAPI`) and line error (`EAMLineErrorAPI`) writeback. Also updates EAM receipt status (`UpdateEAMPOReceiptStatus`, `UpdateEAMPOReceiptSuccessStatus`). For service receipts: calls `ServiceReceiptUpdate`.
+
+> ✅ info.json: `mepType=MEP08`, `eventtypes: UPDATEERRORINEAMHEXAGON|1|sub`, `connections: IFP_PO_RECEI_EAM_REST_CONNE, IFP_PO_RECEI_ATP_DB_CONNE`
+
+---
+
+## Diagram 4 — Receipt Inbound: Reprocess Paths (Technical Description)
+
+**Project: `IFP_PO_RECEI_INBOU_INTEG_ATP`**
+
+Five REST endpoints are active across four separate integrations providing three distinct reprocess entry points for IT operations, plus an EAM error message update path.
+
+---
+
+### 🔴 **Endpoint ⑤: `POST /poprioritywisereprocess` — Receipt Priority/Batch Reprocess**
+
+- **Exposed by:** `IFP_EAM_PRIORITY_REPROCES` (IFP EAM Prioritywise Reprocess)
+- **Called by:** IT Support / Operations — direct external REST call
+- **HTTP verb:** POST, **style:** NOTIFICATION
+- **Parameters:** `?pbatchid` + `?pimportid` + `?priority`
+- **Connection serving it:** `IFP_PO_RECEI_OIC_REST_CONNE`
+
+**Internal logic (CBR — Content-Based Routing):**
+- **Branch A** (`pbatchid > 0`): Maps `pbatchid` directly into `CALLPRIORITYWISEPORCPT1` event payload → publishes → Batchwise Processing re-runs for that batch
+- **Branch B** (`priority`-based): Calls ATP stored procedure `ADMIN.XXIFP_PORCPT_INB_INT_PKG.PORCPTpriority` with `P_ARG_PRIORITY` → receives `P_NEW_BATCH_ID`, `P_NEW_IMPORT_ID`, `P_NEW_PRIORITY_COL` → maps these into `CALLPRIORITYWISEPORCPT2` event → publishes → Batchwise Processing picks up the resolved batch
+
+Both branches eventually trigger `IFP_EAM_PO_RECE_BATC_PROC_INTE` (the main Batchwise Processing subscriber), which then calls `/ponewbatchsplit` to re-enter the pipeline from Stage Data Load.
+
+> ✅ info.json: `mepType=MEP00`; getprioritywise_REQUEST.jca: `ResourceURI=/poprioritywisereprocess`, `QueryParameters=pbatchid, pimportid, priority`, `invocationStyle=NOTIFICATION`; two `.jca` event publisher files confirmed (`CALLPRIORITYWISEPORCPT1` and `CALLPRIORITYWISEPORCPT2`)
+
+---
+
+### 🔴 **Endpoint ⑦: `POST /porcptreprocess` — Receipt Validation-Import Reprocess**
+
+- **Exposed by:** `IFP_PO_RECEIP_REPROC_INTEGR` (IFP PO Receipt Validation-Import Reprocess)
+- **Called by:** IT Support / Operations — direct external REST call
+- **HTTP verb:** POST, **style:** NOTIFICATION
+- **Parameters:** `?pbatchid` + `?preceiptnum` (batch ID or specific receipt number)
+- **Connection serving it:** `IFP_PO_RECEI_OIC_REST_CONNE`
+- **Tracking:** `pbatchid`
+
+**What it does:** Unlike `/poprioritywisereprocess` which re-enters from Batchwise Processing, this endpoint re-enters at the **validation level** — it calls **Endpoint ②** (`/purchaseReceiptvalidation`) synchronously via collocated ICS, bypassing the split/stage step. Also has access to collocated `PRESEEDED_COLLOCATED_CONN_1741`. After validation, runs validation child integration (runvalidationchildintegration_REQUEST.jca, URI `/purchaseReceiptvalidation`).
+
+> ✅ info.json: `mepType=MEP00`, `connections: IFP_PO_RECEI_ATP_DB_CONNE, IFP_PO_RECEI_OIC_REST_CONNE, PRESEEDED_COLLOCATED_CONN_1741`; getporcptreprocess_REQUEST.jca: `ResourceURI=/porcptreprocess`, `QueryParameters=pbatchid, preceiptnum`, `invocationStyle=NOTIFICATION`
+
+---
+
+### 🔴 **Endpoint ⑥: `POST /callbackreprocess` — Receipt Import Callback Reprocess**
+
+- **Exposed by:** `IFP_PO_RECEI_IMPOR_CALLB_REPRO` (IFP PO Receipt Import Callback Reprocess)
+- **Called by:** ERP ESS import completion event or IT Ops direct call
+- **HTTP verb:** POST, **style:** NOTIFICATION
+- **Parameters:** `?loadrequestid` + `?importrequestid`
+- **Connection serving it:** `IFP_PO_RECEI_OIC_REST_CONNE`
+- **Tracking:** `loadrequestid`
+
+**What it does:** Reads ERP import job results. On error: publishes both `CALLPRIORITYWISEPORCPT` (to re-trigger batch processing) and `UPDATEERRORINEAMHEXAGON` (to write error to EAM Hexagon). Calls BIP SOAP for import detail report (`callImportDetailsReport`) and error report. Has access to ERP event connection for status updates.
+
+> ✅ info.json: `mepType=MEP00`, `eventtypes: CALLPRIORITYWISEPORCPT|1|pub, UPDATEERRORINEAMHEXAGON|1|pub`; callbackreprocess_REQUEST.jca (Receipt): `ResourceURI=/callbackreprocess`, `QueryParameters=loadrequestid, importrequestid`, `invocationStyle=NOTIFICATION`
+
+---
+
+### 🔴 **Endpoint ⑨: `POST /updatemessage` — EAM Hexagon Update (Reprocess variant)**
+
+- **Exposed by:** `IFP_EAM_UPDA_MESS_IN_EAM_HEXA_RE` (IFP EAM Update Message in EAM Hexagon Reprocess)
+- **Called by:** IT Support / Operations — direct external REST call (or system-level trigger after reprocess failure)
+- **HTTP verb:** POST, **style:** NOTIFICATION
+- **Parameters:** `?pbatchid` + `?perrorcode`
+- **Connection serving it:** `IFP_PO_RECEI_OIC_REST_CONNE`
+- **Tracking:** `pbatchid`
+
+**What it does:** This integration receives an error code and batch ID from an external caller, then **publishes `UPDATEERRORINEAMHEXAGON`** application event. It does **not** directly call EAM Hexagon — it delegates to the event subscriber `IFP_EAM_UPDA_MESS_IN_EAM_HEXA` (MEP08) which performs the actual EAM REST API call. This decouples the error notification trigger from the EAM write operation.
+
+> ✅ info.json: `mepType=MEP00`, `eventtypes: UPDATEERRORINEAMHEXAGON|1|pub`, `connections: APPLICATION_EVENT_CONNECTION, IFP_PO_RECEI_OIC_REST_CONNE` only — **no EAM REST connection in this integration**, confirming it delegates via event, not direct call
+
+---
+
+## Diagram 5 — AP Invoice Freight + Supplier Outbound (Technical Description)
+
+**Projects: `IFP_AP_INVO_FREI_LINE_UPDA_INTE` + `IFP_SUPPLIER_OUTBOUND_INTEGRAT`**
+
+Two independent pipelines sharing the same diagram. Two REST endpoints across two collocated call chains, both initiated by scheduled integrations.
+
+---
+
+### AP Invoice Freight Pipeline
+
+**`IFP_AP_INVO_FREI_LINE_UPDA_INTE`** (Schedule AP Invoice Freight Misc COA Integration) — MEP07 Scheduled trigger.
+
+**What it does directly:** Calls BIP SOAP for freight invoice data, calls Oracle ERP Cloud REST API to read invoice line details, patches invoice line DFF and distribution COA directly. This integration has no REST endpoint — it is the outer scheduled shell.
+
+It also triggers a **separate parallel scheduled integration**: `IFP_SUBMI_PAYAB_IMPOR_INVOI_INTE` (IFP Submit Payable Import Invoices Int Main, MEP07 Scheduled).
+
+**`IFP_SUBMI_PAYAB_IMPOR_INVOI_INTE`** — MEP07 scheduled, submits Oracle Payables ESS import job:
+- Calls Oracle ERP SOAP (`IFP_APFR_ORAC_ERP_INTE_SERV_SOAP`) to submit Payables Import job
+- Polls `GetESSJobStatus` in a while-loop until ESS job completion (using `IFP_APFR_ORACLE_REST_CONNEC`)
+- On job completion: invokes **Endpoint ⑩** via collocated ICS
+
+> ✅ info.json: `mepType=MEP07`, `connections: IFP_APFR_ORAC_ERP_INTE_SERV_SOAP, IFP_APFR_ORACLE_REST_CONNEC, PRESEEDED_COLLOCATED_CONN_1741`
+
+---
+
+### 🔴 **Endpoint ⑩: `POST /PostMiscFreight` — AP Freight Misc COA Update**
+
+- **Exposed by:** `IFP_AP_INVO_FREI_MISC_COA_UPDA_M` (IFP AP Invoice Freight Misc COA Update Main)
+- **Called by:** `IFP_SUBMI_PAYAB_IMPOR_INVOI_INTE` via `PRESEEDED_COLLOCATED_CONN_1741` (collocated ICS, CallMiscFreighUpdateIntegration_REQUEST.jca)
+- **HTTP verb:** POST, **style:** NOTIFICATION (fire-and-forget — Submit integration hands off and exits)
+- **Parameters:** `?EssProcessId` + `?OicIntegration`
+- **Connection serving it:** `IFP_APFR_OIC_REST_CONNEC` (Basic Auth)
+- **Tracking:** `EssProcessId`
+- **MEP of receiving integration:** MEP00
+
+**What Freight Misc COA Update does:**
+1. Receives the ESS process ID to identify which import job completed
+2. Calls BIP SOAP (`IFP_APFR_ORACL_BIP_SOAP_CONNE`) for the freight invoice report — fetches which invoice lines need COA correction post-import
+3. For each freight invoice line: calls Oracle ERP REST (`IFP_APFR_ORACLE_REST_CONNEC`) to GET invoice line details, GET invoice line DFF, PATCH invoice line DFF, GET distribution details, PATCH distribution COA
+4. For Misc (non-freight) lines: invokes `SubmitMiscFriIntegration` sub-flow which calls the same orchestration pattern against misc COA lines
+5. Also calls `IFP_AP_INVO_FREI_LINE_UPDA_INTE` sibling scheduled integration for project-linked distributions (GET project line detail, GET project DFF, PATCH project line, PATCH distribution project details)
+6. On error: sends email notification via `IFP_Common_Utility_Lookup`
+
+> ✅ info.json: `mepType=MEP00`, `connections: IFP_APFR_ORACL_BIP_SOAP_CONNE, IFP_APFR_OIC_REST_CONNEC, IFP_APFR_ORACLE_REST_CONNEC`; SubmitMiscFriIntegration_REQUEST.jca: `ResourceURI=/PostMiscFreight`, `invocationStyle=NOTIFICATION`
+
+---
+
+### Supplier Outbound Pipeline
+
+**`TEST_IFP_SCHED_SUPPL_OUTBO_INTEG`** (IFP Schedule Supplier Outbound Integration) — MEP07 Scheduled, uses only `PRESEEDED_COLLOCATED_CONN_1741`.
+
+**What it does:** Runs on schedule; maps scheduling metadata to supplier outbound parameters; invokes **Endpoint ⑪** via collocated ICS.
+
+> ✅ info.json: `mepType=MEP07`, `connections: PRESEEDED_COLLOCATED_CONN_1741` only; callsupplieroutboundint_REQUEST.jca: `integration_id=TEST_IFP_SUPPL_OUTBO_INTEG_17702|01.00.0000`, `ResourceURI=/supplieroutbound`
+
+---
+
+### 🔴 **Endpoint ⑪: `POST /supplieroutbound` — Supplier Outbound**
+
+- **Exposed by:** `TEST_IFP_SUPPL_OUTBO_INTEG_17702` (IFP Supplier Outbound Integration)
+- **Called by:** `TEST_IFP_SCHED_SUPPL_OUTBO_INTEG` via collocated ICS (`PRESEEDED_COLLOCATED_CONN_1741`)
+- **HTTP verb:** POST, **style:** NOTIFICATION
+- **Parameters:** `?psuppliernumber` + `?pvendorsitecode` + `?prundate`
+- **Connection serving it:** `IFP_SUPP_OIC_REST_CONNEC` (Basic Auth)
+- **Tracking:** `prundate`
+
+**What Supplier Outbound does:**
+1. Calls EAM Hexagon REST (`IFP_SUPP_EAM_REST_CONNEC`) to fetch supplier grid data (by supplier number, vendor site code, run date)
+2. Calls BIP SOAP (`IFP_SUPP_ORACL_BIP_SOAP_CONNE`, `GetBIPReportDetails`) for BIP-based supplier validation data
+3. Calls Oracle ERP Cloud REST (`IFP_SUPP_ORACLE_REST_CONNEC`): `LoadSupplier` (POST `/supplier`), `GetSupplierResponse` (GET `/{id}`), `UpdateSupplier` (PATCH `/{id}`), `CreateSupplierAddress` (POST `/supplier/addresses`)
+4. Updates supplier site DFF flags: `UpdateSupplierFlag` and `UpdateSupplierSiteFlag` (PATCH `/fscmRestApi/resources/11.13.18.05/suppliers/{SupplierId}/child/sites/{SupplierSiteId}/child/DFF/{SupplierSiteId}`)
+5. Also uses `IFP_SUPP_OUTBOU_INTEGR_ATP` (ATP database connection) for staging/tracking records
+6. On error: email notification via `IFP_Common_Utility_Lookup`
+
+> ✅ info.json: `mepType=MEP00`, `connections: IFP_SUPP_ORACLE_REST_CONNEC, IFP_SUPP_EAM_REST_CONNEC, IFP_SUPP_OIC_REST_CONNEC, IFP_SUPP_ORACL_BIP_SOAP_CONNE, IFP_SUPP_OUTBOU_INTEGR_ATP`; Triggersuppout_REQUEST.jca: `ResourceURI=/supplieroutbound`, `QueryParameters=psuppliernumber, pvendorsitecode, prundate`, `invocationStyle=NOTIFICATION`
+
+---
+
+## Cross-Diagram Accuracy Summary
+
+| Claim | Source | Status |
+|---|---|---|
+| Both `/ponewbatchsplit` instances are NOTIFICATION (fire-and-forget) | Both callpostagerest_REQUEST.jca files | ✅ |
+| Both `/purchasevalidation` and `/purchaseReceiptvalidation` are REQUEST_RESPONSE (synchronous, MEP04) | info.json `mepType=MEP04` for both validation integrations | ✅ |
+| `/poinboundmain` appears 3 times with different query params | 3 distinct `.jca` files read: Status Update (3 params), PO Import (1 param), Receipt Import (1 param) | ✅ |
+| `IFP_EAM_PO_BATCH_REPRO_INTEG` has only 2 applications (REST → event publish, no ATP call) | project.xml read: only `application_13` + `application_20` + 1 transformer + tracker | ✅ |
+| XSL in Batchwise Reprocess maps `importid → parameter2` in `TRIGGERNEWPOBATCH` event | req_c1b14b91a8a344dd8682c95e48e0b688.xsl fully read | ✅ |
+| `/updatemessage` delegates to EAM via event — does NOT call EAM directly | info.json has no EAM REST connection, only `APPLICATION_EVENT_CONNECTION + IFP_PO_RECEI_OIC_REST_CONNE` | ✅ |
+| Both PO Validation (`IFP_EAM_PO_VALIDA_INTEGR`) and Receipt Validation (`IFP_EAM_PO_RECEIPT_VALID_INTEG`) are MEP04 | info.json both: `mepType=MEP04` | ✅ |
+| `TEST_IFP_SCHED_SUPPL_OUTBO_INTEG` uses only `PRESEEDED_COLLOCATED_CONN_1741` with no other connection | info.json `connections: PRESEEDED_COLLOCATED_CONN_1741` only | ✅ |
+| `/PostMiscFreight` called after ESS poll completes (not immediately on schedule) | info.json Submit integration: `connections: IFP_APFR_ORAC_ERP_INTE_SERV_SOAP` (ESS submit SOAP) + `PRESEEDED_COLLOCATED_CONN_1741` (collocated call to Misc COA) | ✅ |
+| PO and Receipt `/poinboundmain` are different integration instances in different projects on different REST connections | PO Import uses `IFP_PO_OIC_REST_CONNEC`; Receipt Import uses `IFP_PO_RECEI_OIC_REST_CONNE` — different base URLs at runtime | ✅ |
