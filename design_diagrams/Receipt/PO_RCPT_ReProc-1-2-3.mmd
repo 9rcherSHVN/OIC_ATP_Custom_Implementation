@@ -1,0 +1,39 @@
+flowchart TD
+
+    subgraph INT1["① IFP_EAM_UPDA_MESS_IN_EAM_HEXA_RE  ·  No DB call (event relay)"]
+        A1([REST Trigger\nPOST /updatemessage\nParams: pbatchid · perrorcode])
+        A1 --> A2[Transform\nMap pbatchid + perrorcode to\nUPDATEERRORI NEAMHEXAGON payload]
+        A2 --> A3[[Publish App Event\nUPDATEERRORI NEAMHEXAGON]]
+        A3 --> A4([Stop])
+    end
+    A3 -. "consumed by IFP_EAM_UPDA_MESS_IN_EAM_HEXA\nnormal EAM Hexagon writeback resumes" .-> HEXA[[Normal EAM Hexagon Writeback]]
+
+    subgraph INT2["② IFP_EAM_PRIORITY_REPROCES  ·  XXIFP_GET_PRIORITYWISE_NEWBATCH"]
+        B1([REST Trigger\nPOST /poprioritywisereprocess\nParams: pbatchid · pimportid · priority])
+        B1 --> B2{"pbatchid > 0?"}
+
+        B2 -->|Yes — batch ID known,\nre-queue directly| B3[Transform to\nCALLPRIORITYWISEPORCPT payload]
+        B3 --> B4[[Publish App Event\nCALLPRIORITYWISEPORCPT]]
+
+        B2 -->|No / Else —\nbatch ID unknown| B5[Transform to DB params]
+        B5 --> B6[("ADMIN.XXIFP_PORCPT_INB_INT_PKG\n► XXIFP_GET_PRIORITYWISE_NEWBATCH\nGet next available\npriority batch ID")]
+        B6 --> B7[Transform: map new batch ID\nto event payload]
+        B7 --> B8[[Publish App Event\nCALLPRIORITYWISEPORCPT]]
+
+        B4 --> B9([Stop])
+        B8 --> B9
+    end
+    B4 -. "consumed by IFP_EAM_PO_RECE_BATC_PROC_INTE" .-> BATC[[Normal Receipt Batch Processing]]
+    B8 -. "consumed by IFP_EAM_PO_RECE_BATC_PROC_INTE" .-> BATC
+
+    subgraph INT3["③ IFP_PO_RECEIP_REPROC_INTEGR  ·  XXIFP_PORCPT_REPROCESS_DATA"]
+        C1([REST Trigger\nPOST /porcptreprocess\nParams: pbatchid · preceiptnum])
+        C1 --> C2["TRY: ReprocessPORcptData"]
+        C2 --> C3[Transform to DB params]
+        C3 --> C4[("ADMIN.XXIFP_PORCPT_INB_INT_PKG\n► XXIFP_PORCPT_REPROCESS_DATA\nReset staging receipt record status\nto allow re-validation")]
+        C4 --> C5[Transform to collocated payload]
+        C5 --> C6[[Invoke Collocated Integration\nrunvalidationchildintegration\nRe-runs receipt validation + import]]
+        C6 --> C7([Stop])
+    end
+
+   

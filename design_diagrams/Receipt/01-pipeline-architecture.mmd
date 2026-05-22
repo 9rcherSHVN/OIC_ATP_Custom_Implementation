@@ -1,0 +1,218 @@
+%%{
+  init: {
+    "flowchart": { "curve": "basis", "nodeSpacing": 40, "rankSpacing": 55 },
+    "theme": "default"
+  }
+}%%
+
+flowchart TD
+
+    %% ── Class definitions ─────────────────────────────────────────────────
+    classDef flow    fill:#dbeafe,stroke:#2563eb,color:#1e3a8a,font-weight:bold
+    classDef evt     fill:#d1fae5,stroke:#059669,color:#064e3b,font-weight:bold
+    classDef ext     fill:#fef3c7,stroke:#b45309,color:#78350f
+    classDef db      fill:#ecfdf5,stroke:#15803d,color:#14532d
+    classDef reproc  fill:#f3e8ff,stroke:#9333ea,color:#581c87
+    classDef sched   fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,font-weight:bold
+    classDef trigger fill:#fff7ed,stroke:#c2410c,color:#7c2d12,font-style:italic
+
+    %% ══════════════════════════════════════════════════════════════════════
+    %% TRIGGERS
+    %% ══════════════════════════════════════════════════════════════════════
+    SCHED(["OIC Scheduler"]):::sched
+    ERP_CB(["ERP Cloud\npoimportorderscallback\n⚠ async — no OIC watchdog"]):::trigger
+
+    %% ══════════════════════════════════════════════════════════════════════
+    %% AppEvent Bus
+    %% ══════════════════════════════════════════════════════════════════════
+    EVT1{{"CALLPRIORITYWISEPORCPT\n{batchId, priority}"}}:::evt
+    EVT2{{"UPDATEERRORINEAMHEXAGON\n{batchId}"}}:::evt
+
+    %% ══════════════════════════════════════════════════════════════════════
+    %% External Systems
+    %% ══════════════════════════════════════════════════════════════════════
+    EAM[("EAM REST API")]:::ext
+    ATP[("Oracle ATP DB")]:::db
+    BIP[("Oracle BIP SOAP")]:::ext
+    ERP[("Oracle ERP Cloud")]:::ext
+
+    %% ══════════════════════════════════════════════════════════════════════
+    %% PHASE 1 — Data Extraction
+    %% F1: UPDA_IFP_EAM_PO_RECE_DATA_EXTR_I
+    %% ══════════════════════════════════════════════════════════════════════
+    subgraph PHASE1 ["Phase 1 · Data Extraction   —   F1: UPDA_IFP_EAM_PO_RECE_DATA_EXTR_I"]
+        T1(["Trigger\nscheduleReceive\nTracking: startTime"]):::trigger
+
+        subgraph G1E ["5 EAM Grid Extracts  (each with isolated CATCH_ALL)"]
+            direction TB
+            E1["WHILE → FetchReceiveGridDetails → EAMReceiveHdrInsert"]:::flow
+            E2["WHILE → FetchReceiveLineGridDetails → EAMRecieveLineInsert ⚠"]:::flow
+            E3["WHILE → FetchRtnHdrGridDetails → EAMReturnHdrInsert"]:::flow
+            E4["WHILE → FetchRtnLineGridDetails → EAMReturnLineInsert"]:::flow
+            E5["WHILE → fetchServiceRecReturnGrid → InsertServiceStageloaddata"]:::flow
+            E1 --> E2 --> E3 --> E4 --> E5
+        end
+
+        B1["Insertintoextractloadtable\npoRcptinboundbatchupdcre"]:::flow
+        P1["PORCPTprior\n→ Assign BatchID + Priority\n→ STITCH sh0 → XSLT"]:::flow
+    end
+
+    %% ══════════════════════════════════════════════════════════════════════
+    %% PHASE 2 — Batch Dispatch
+    %% F2: IFP_EAM_PO_RECE_BATC_PROC_INTE
+    %% ══════════════════════════════════════════════════════════════════════
+    subgraph PHASE2 ["Phase 2 · Batch Dispatch   —   F2: IFP_EAM_PO_RECE_BATC_PROC_INTE"]
+        direction LR
+        T2(["Trigger\nSUBSCRIBE EVT1\nTracking: p_new_batch_id"]):::trigger
+        F2["BatchstatusDRAFTupd\n→ COLLOCATED callPORCPTstagedataloading\n⚠ CATCH_ALL → ehStop (silent)"]:::flow
+    end
+
+    %% ══════════════════════════════════════════════════════════════════════
+    %% PHASE 3 — Stage Data Loading
+    %% F3: IFP_EAM_PO_RECEIPT_STAG_DATA_LOA
+    %% ══════════════════════════════════════════════════════════════════════
+    subgraph PHASE3 ["Phase 3 · Stage Data Loading   —   F3: IFP_EAM_PO_RECEIPT_STAG_DATA_LOA"]
+        direction LR
+        T3(["Trigger\nCOLLOCATED from F2\nTracking: pbatchId"]):::trigger
+        F3["mainstageload\nupdateReadybatchstatus\n→ COLLOCATED CallChildPOValidationIntegration\n⚠ CATCH_ALL → ehStop (silent)"]:::flow
+    end
+
+    %% ══════════════════════════════════════════════════════════════════════
+    %% PHASE 4 — Receipt Validation
+    %% F4: IFP_EAM_PO_RECEIPT_VALID_INTEG  ⚠ projectHasWarnings
+    %% ══════════════════════════════════════════════════════════════════════
+    subgraph PHASE4 ["Phase 4 · Receipt Validation   —   F4: IFP_EAM_PO_RECEIPT_VALID_INTEG   ⚠ projectHasWarnings"]
+        T4(["Trigger\nCOLLOCATED push-sync from F3\n(replies back to F3)"]):::trigger
+
+        subgraph G4B ["BIP Report Loop  (FOR each BU)"]
+            direction TB
+            B41["fecthBUbatchlastrundetails ⚠ typo"]:::flow
+            B42["POreceiptreport [SOAP4] → stageFile sf3 → POreceipt"]:::flow
+            B43["BIPgetsupplierReport [SOAP2] → stageFile sf2 → loadPOsupplierdet"]:::flow
+            B44["BIPgetInvItemReport [SOAP4 ⚠ dup] → stageFile sf4 → loadInvItemdetailsrpt"]:::flow
+            B45["updatelastrundate"]:::flow
+            B41 --> B42 --> B43 --> B44 --> B45
+        end
+
+        V4["PORcptValidation\nUpdateInprocessbatchstatus\n→ COLLOCATED CallChildImportInboundint\n→ REPLY to F3"]:::flow
+    end
+
+    %% ══════════════════════════════════════════════════════════════════════
+    %% PHASE 5 — FBDI Import
+    %% F5: IFP_EAM_PO_IMPORT_INTEGR
+    %% ══════════════════════════════════════════════════════════════════════
+    subgraph PHASE5 ["Phase 5 · FBDI Import   —   F5: IFP_EAM_PO_IMPORT_INTEGR"]
+        direction LR
+        T5(["Trigger\nCOLLOCATED from F4"]):::trigger
+        F5A["getimportbatch\nFetchPOReceiptfbdidata\nwriteRcptHeaderFile [opt] · WriteRcptTrxFile\nwritePropertiesFile · createZipFile · listZipFile"]:::flow
+        F5B["importRcptsToERP [importBulkData]\nupdateBatchStatusProcedure\n{stores ESS requestId}"]:::flow
+        F5C["FetchPORCPTproecssdata ⚠ typo\nwriteporcptprocesscolumn · WritePORCPTprocessdata\nnotification email · ACTIVITY_STREAM_LOGGER"]:::flow
+    end
+
+    %% ══════════════════════════════════════════════════════════════════════
+    %% PHASE 6 — ERP Import Callback
+    %% F6: IFP_PO_RECEI_IMPOR_CALLB_REQUE  ⚠ projectHasWarnings
+    %% ══════════════════════════════════════════════════════════════════════
+    subgraph PHASE6 ["Phase 6 · ERP Import Callback   —   F6: IFP_PO_RECEI_IMPOR_CALLB_REQUE   ⚠ projectHasWarnings"]
+        T6(["Trigger\npoimportorderscallback\nTracking: DOCUMENTID"]):::trigger
+        F6A["writerequestidfilercpt\ngetprioritywisenextbatch\n→ chain-fire PUBLISH EVT1"]:::flow
+
+        subgraph G6R ["MainScope — 3-route ROUTER  (one route selected per callback)"]
+            SC0["sc0  SUMMARYSTATUS=0\nupdateimportrequestid · callBIPReport\ninsertpoerroratp · POerrordetailsrpt\ncallImportDetailsReport\ninsertImportDetailsintoATPDB · callImportDetailsProcedure"]:::flow
+            SC1["sc1  SUMMARYSTATUS=1\nupdateimportrequestid · callErrorReport\ninsertImportDetailsError · callImportDetailsErrorProcedure\nSOAP4 runReport\ninsertImportDetailsintoATPDB · POerrordetailsrpt"]:::flow
+            SC8["sc8  status-only\nDonloadZIPFile ⚠ typo\nWriteERPLog · notification"]:::flow
+        end
+
+        F6B["FetchPORcptproecssdata ⚠ typo\nwriteporcptprocesscolumn · WritePORCPTprocessdata\nnotification email"]:::flow
+    end
+
+    %% ══════════════════════════════════════════════════════════════════════
+    %% PHASE 7 — EAM Writeback
+    %% F7: IFP_EAM_UPDA_MESS_IN_EAM_HEXA
+    %% ══════════════════════════════════════════════════════════════════════
+    subgraph PHASE7 ["Phase 7 · EAM Writeback   —   F7: IFP_EAM_UPDA_MESS_IN_EAM_HEXA"]
+        T7(["Trigger\nSUBSCRIBE EVT2\nPublishers: F5 · F6 · R7 · R9"]):::trigger
+
+        subgraph G7S ["try t1 · UpdateSuccessEAM  (runs FIRST)"]
+            direction TB
+            S1["GetSuccessPORcpt"]:::flow
+            S2["Purchase Receipt\nUpdateEAMPOReceiptSuccessStatus → SentEAMUpdateinDB"]:::flow
+            S3["Service Receipt\nServiceReceiptUpdate → SentUpdateEAMinDB"]:::flow
+            S1 --> S2
+            S1 --> S3
+        end
+
+        subgraph G7E ["try t0 · UpdateEAMError  (runs SECOND)"]
+            direction TB
+            W1["GetPOReceiptErrorRecords"]:::flow
+            W2["UpdateEAMPOReceiptStatus · EAMHeaderErrorAPI → StatusUpdationEAM"]:::flow
+            W3["GetPOReceiptLineErrors\nEAMLineErrorAPI → UpdateEAMStatus"]:::flow
+            W1 --> W2 --> W3
+        end
+    end
+
+    %% ══════════════════════════════════════════════════════════════════════
+    %% REPROCESS — Manual Re-entry Flows
+    %% ══════════════════════════════════════════════════════════════════════
+    subgraph REPROC ["Manual Re-entry Flows"]
+        direction TB
+        R11["R11 · IFP_EAM_PRIORITY_REPROCES\nREST: getprioritywise {pbatchid, pimportid}\nPORCPTpriority [opt] → PUBLISH EVT1"]:::reproc
+        R10["R10 · IFP_PO_RECEIP_REPROC_INTEGR\nREST: getporcptreprocess {pbatchid, preceiptnum}\nupdateporcptdata → COLLOCATED F4"]:::reproc
+        R7["R7 · IFP_PO_RECEI_IMPOR_CALLB_REPRO\nREST: callbackreprocess\ngetprioritywisenextbatch → BIP re-run → PUBLISH EVT2"]:::reproc
+        R9["R9 · IFP_EAM_UPDA_MESS_IN_EAM_HEXA_RE\nREST: UpdatemessageinEAM {pbatchid}\nRECEIVE → XSLT → PUBLISH EVT2"]:::reproc
+    end
+
+    %% ══════════════════════════════════════════════════════════════════════
+    %% PIPELINE SPINE
+    %% ══════════════════════════════════════════════════════════════════════
+    SCHED     --> T1
+    T1        --> G1E
+    G1E       --> B1 --> P1
+    P1        -->|"PUBLISH"| EVT1
+
+    EVT1      -->|"SUBSCRIBE"| T2 --> F2
+    F2        -->|"COLLOCATED"| T3 --> F3
+    F3        -->|"COLLOCATED"| T4 --> G4B --> V4
+    V4        -.->|"push-sync REPLY"| F3
+    V4        -->|"COLLOCATED"| T5 --> F5A --> F5B --> F5C
+    F5C       -->|"PUBLISH (fire-and-forget)"| EVT2
+    F5B       -->|"importBulkData FBDI ZIP"| ERP
+    ERP_CB    -->|"⚠ async callback"| T6
+
+    T6        --> F6A --> G6R --> F6B
+    F6A       -->|"chain-fire PUBLISH"| EVT1
+    F6B       -->|"PUBLISH ⚠ race w/ F5"| EVT2
+
+    EVT2      -->|"SUBSCRIBE"| T7
+    T7        --> G7S --> G7E
+
+    %% ══════════════════════════════════════════════════════════════════════
+    %% EXTERNAL SYSTEM CONNECTIONS
+    %% ══════════════════════════════════════════════════════════════════════
+    G1E  <-->|"REST1–REST5\n5x paginated WHILE extract"| EAM
+    B1    -->|"ATP6–ATP7\nbatch create"| ATP
+    P1    -->|"ATP8 priority"| ATP
+    F2    -->|"ATP1\nBatchstatusDRAFTupd"| ATP
+    F3    -->|"ATP1–ATP2\nstage + status"| ATP
+    G4B  <-->|"3x runReport/BU"| BIP
+    G4B   -->|"ATP1–ATP5\nref data load + last-run"| ATP
+    V4    -->|"ATP6–ATP7\nvalidation + status"| ATP
+    F5A   -->|"ATP1–ATP2\nbatch fetch"| ATP
+    F5B   -->|"ATP3\nstores ESS requestId"| ATP
+    F5C   -->|"ATP4\nprocessed summary"| ATP
+    G6R  <-->|"SOAP1–SOAP4\nimport result reports"| BIP
+    G6R   -->|"ATP2–ATP11\nerror + detail inserts"| ATP
+    F6A   -->|"ATP1\nchain-fire query"| ATP
+    F6B   -->|"ATP12\nprocessed summary"| ATP
+    G7S  <-->|"REST4–REST5\nsuccess writeback"| EAM
+    G7E  <-->|"REST1–REST3\nerror writeback"| EAM
+    G7S   -->|"ATP1 · ATP4–ATP5\nsuccess flags"| ATP
+    G7E   -->|"ATP2–ATP3 · ATP6–ATP7\nerror flags"| ATP
+
+    %% ══════════════════════════════════════════════════════════════════════
+    %% REPROCESS ENTRY POINTS
+    %% ══════════════════════════════════════════════════════════════════════
+    R11   -->|"PUBLISH"| EVT1
+    R10   -->|"COLLOCATED → Phase 4"| V4
+    R7    -->|"PUBLISH"| EVT2
+    R9    -->|"PUBLISH"| EVT2

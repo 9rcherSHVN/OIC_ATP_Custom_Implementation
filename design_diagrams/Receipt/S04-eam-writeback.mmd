@@ -1,0 +1,103 @@
+%%{
+  init: {
+    "sequence": { "mirrorActors": false, "wrap": true, "noteMargin": 8 },
+    "theme": "default"
+  }
+}%%
+
+%% ══════════════════════════════════════════════════════════════════════════
+%% PHASE 7 — EAM Writeback
+%% Flow:    IFP_EAM_UPDA_MESS_IN_EAM_HEXA | 01.00.0000
+%% Participants: 4  (BUS · F7 · ATP · EAM)
+%% Publishers of UPDATEERRORINEAMHEXAGON:
+%%   · F5 (seq/03-import-and-callback.mmd step P5-14)  — after FBDI submit
+%%   · F6 (seq/03-import-and-callback.mmd step P6-29)  — after callback processing
+%%   · R7 · IFP_PO_RECEI_IMPOR_CALLB_REPRO             — manual callback reprocess
+%%   · R9 · IFP_EAM_UPDA_MESS_IN_EAM_HEXA_RE           — manual writeback re-trigger
+%% ══════════════════════════════════════════════════════════════════════════
+
+sequenceDiagram
+
+    box AppEvent Bus
+        participant BUS as UPDATEERRORINEAMHEXAGON
+    end
+    box OIC
+        participant F7 as F7 · EAM_WRITEBACK
+    end
+    box External Systems
+        actor ATP as Oracle ATP DB<br/>(IFP_PO_RECEI_ATP_DB_CONNE)
+        actor EAM as EAM REST API<br/>(IFP_PO_RECEI_EAM_REST_CONNE)
+    end
+
+    Note right of BUS: Receives event published in seq/03-import-and-callback.mmd (P5-14 or P6-29)<br/>Also re-triggered by reprocess flows R7 and R9
+
+    %% ══════════════════════════════════════════════════════════════════════
+    %% PHASE 7 — EAM Writeback
+    %% ══════════════════════════════════════════════════════════════════════
+    rect rgb(220, 255, 240)
+        BUS->>F7: [P7-1] SUBSCRIBE UPDATEERRORINEAMHEXAGON {batchId}
+        activate F7
+        Note right of F7: Flat orchestration — no globalTry wrapper.<br/>SUCCESS scope (try t1) executes BEFORE error scope (try t0).<br/>2 success paths: Purchase Receipt vs Service Receipt (unique to receipt integration).
+
+        %% ── try t1 UpdateSuccessEAM — runs FIRST ─────────────────────────
+        Note right of F7: try t1 · UpdateSuccessEAM — RUNS FIRST
+
+        F7->>F7:  [P7-2] Assign lv_successBatchId, org, tenant (a2, a3, a4)
+        F7->>ATP: [P7-3] GetSuccessPORcpt (ATP1) — fetch successfully imported receipt records
+        ATP-->>F7: list of success records
+
+        opt [P7-4] success records exist [ROUTER s1/sc1]
+            loop [P7-5] FOR each success record [f2] — try t3 SwitchLogicForServices
+
+                alt [P7-6] Purchase Receipt [ROUTER s3/sc3]
+                    F7->>EAM: [P7-7] UpdateEAMPOReceiptSuccessStatus (REST4)
+                    EAM-->>F7: OK
+                    F7->>ATP: [P7-8] SentEAMUpdateinDB (ATP4) — record purchase receipt writeback as sent
+                    ATP-->>F7: OK
+
+                else [P7-9] Service Receipt [ROUTER s3/sc4]
+                    F7->>EAM: [P7-10] ServiceReceiptUpdate (REST5)
+                    EAM-->>F7: OK
+                    F7->>ATP: [P7-11] SentUpdateEAMinDB (ATP5) — record service receipt writeback as sent
+                    ATP-->>F7: OK
+                end
+
+                Note right of F7: CATCH_ALL ta2 per record → ACTIVITY_STREAM_LOGGER lg2 (non-fatal per-record error)
+            end
+        end
+
+        %% ── try t0 UpdateEAMError — runs SECOND ──────────────────────────
+        Note right of F7: try t0 · UpdateEAMError — RUNS SECOND
+
+        F7->>F7:  [P7-12] Assign org, tenant (a0, a1)
+        F7->>ATP: [P7-13] GetPOReceiptErrorRecords (ATP2) — fetch error header records
+        ATP-->>F7: list of error header records
+
+        opt [P7-14] error records exist [ROUTER s0/sc0]
+            loop [P7-15] FOR each error header [f0] — ROUTER s2/sc2 — try t4 EAMHeaderErrorAPIScope
+
+                F7->>EAM: [P7-16] UpdateEAMPOReceiptStatus (REST3) — set PO receipt overall status → ERROR
+                EAM-->>F7: OK
+                F7->>EAM: [P7-17] EAMHeaderErrorAPI (REST1) — push header error detail to EAM
+                EAM-->>F7: OK
+                Note right of EAM: Error header path calls 2 EAM REST APIs per header:<br/>one for overall status, one for error detail payload.
+                F7->>ATP: [P7-18] StatusUpdationEAM (ATP7) — record header error status in ATP
+                ATP-->>F7: OK
+                Note right of F7: CATCH_ALL ta0 per header → ACTIVITY_STREAM_LOGGER lg0
+
+                F7->>ATP: [P7-19] GetPOReceiptLineErrors (ATP3) — fetch line-level errors for this header
+                ATP-->>F7: error line records
+
+                loop [P7-20] FOR each error line [f1] — try t2 EAMLineErrorLogsAPI
+                    F7->>EAM: [P7-21] EAMLineErrorAPI (REST2) — push line error detail to EAM
+                    EAM-->>F7: OK
+                    F7->>ATP: [P7-22] UpdateEAMStatus (ATP6) — record line error status in ATP
+                    ATP-->>F7: OK
+                    Note right of F7: CATCH_ALL ta1 per line → ACTIVITY_STREAM_LOGGER lg1
+                end
+            end
+        end
+
+        deactivate F7
+        Note right of F7: End of pipeline for this batch.<br/>Reprocess entry points: R9 (writeback re-trigger), R10 (per-receipt), R7 (callback reprocess), R11 (priority reprocess).
+    end

@@ -1,0 +1,106 @@
+%%{
+  init: {
+    "sequence": { "mirrorActors": false, "wrap": true, "noteMargin": 8 },
+    "theme": "default"
+  }
+}%%
+
+%% ══════════════════════════════════════════════════════════════════════════
+%% PHASE 1 — Data Extraction
+%% Flow:    UPDA_IFP_EAM_PO_RECE_DATA_EXTR_I | 01.00.0000
+%% Trigger: OIC Scheduler (scheduleReceive)
+%% Participants: 5  (SCHED · F1 · EAM · ATP · BUS)
+%% Next diagram: seq/02-staging-and-validation.mmd
+%% ══════════════════════════════════════════════════════════════════════════
+
+sequenceDiagram
+
+    box OIC
+        participant SCHED as OIC Scheduler
+        participant F1    as F1 · DATA_EXTR
+    end
+    box External Systems
+        actor EAM as EAM REST API<br/>(IFP_PO_RECEI_EAM_REST_CONNE)
+        actor ATP as Oracle ATP DB<br/>(IFP_PO_RECEI_ATP_DB_CONNE)
+    end
+    box AppEvent Bus
+        participant BUS as CALLPRIORITYWISEPORCPT
+    end
+
+    %% ── Entry ─────────────────────────────────────────────────────────────
+    rect rgb(220, 235, 255)
+        Note right of SCHED: Tracking: startTime (primary)<br/>Assignments a0–a31 — one cursor variable per grid<br/>ACTIVITY_STREAM_LOGGER lg0 fires immediately after assigns
+
+        SCHED->>F1: [P1-1] scheduleReceive
+        activate F1
+
+        %% ── Grid 1 of 5: Receive Headers ─────────────────────────────────
+        Note right of F1: try t2 · HeaderReceiveExtractGrid
+        loop [P1-2] WHILE hasMore pages
+            F1->>EAM:  [P1-3] FetchReceiveGridDetails (REST1) — paginated GET
+            EAM-->>F1: receive header rows
+            F1->>ATP:  [P1-4] EAMReceiveHdrInsert (ATP1)
+            ATP-->>F1: OK
+            F1->>F1:   advance cursor
+        end
+        Note right of F1: CATCH_ALL ta0 → ReceiveHeaderException (ATP9) + email n0
+
+        %% ── Grid 2 of 5: Receive Lines ───────────────────────────────────
+        Note right of F1: try t4 · LineReceiveExtractGrid
+        loop [P1-5] WHILE hasMore pages
+            F1->>EAM:  [P1-6] FetchReceiveLineGridDetails (REST2) — paginated GET
+            EAM-->>F1: receive line rows
+            F1->>ATP:  [P1-7] EAMRecieveLineInsert (ATP2)
+            ATP-->>F1: OK
+        end
+        Note right of ATP: ⚠ [DEFECT] ATP proc name misspelled: EAMRecieve... (transposed i/e)
+        Note right of F1: CATCH_ALL ta2 → ReceiveLineException (ATP10) + email n2
+
+        %% ── Grid 3 of 5: Return Headers ──────────────────────────────────
+        Note right of F1: try t6 · HeaderReturnExtractGrid
+        loop [P1-8] WHILE hasMore pages
+            F1->>EAM:  [P1-9] FetchRtnHdrGridDetails (REST3) — paginated GET
+            EAM-->>F1: return header rows
+            F1->>ATP:  [P1-10] EAMReturnHdrInsert (ATP3)
+            ATP-->>F1: OK
+        end
+        Note right of F1: CATCH_ALL ta1 → ReturnHeaderException (ATP11) + email n1
+
+        %% ── Grid 4 of 5: Return Lines ────────────────────────────────────
+        Note right of F1: try t8 · LineReturnExtractGrid
+        loop [P1-11] WHILE hasMore pages
+            F1->>EAM:  [P1-12] FetchRtnLineGridDetails (REST4) — paginated GET
+            EAM-->>F1: return line rows
+            F1->>ATP:  [P1-13] EAMReturnLineInsert (ATP4)
+            ATP-->>F1: OK
+        end
+        Note right of F1: CATCH_ALL ta3 → ReturnLineException (ATP12) + email n3
+
+        %% ── Grid 5 of 5: Service Receipts ────────────────────────────────
+        Note right of F1: try t10 · RecptServiceExtraGrid
+        loop [P1-14] WHILE hasMore pages
+            F1->>EAM:  [P1-15] fetchServiceRecReturnGrid (REST5) — paginated GET
+            EAM-->>F1: service receipt rows
+            F1->>F1:   Assignment a26 (service record mapping)
+            F1->>ATP:  [P1-16] InsertServiceStageloaddata (ATP5)
+            ATP-->>F1: OK
+        end
+        Note right of F1: CATCH_ALL ta4 → ServiceException (ATP13) + email n4<br/>Each of the 5 grids has its own isolated CATCH_ALL — fault isolation per type
+
+        %% ── Batch Creation — runs AFTER all 5 grids complete ─────────────
+        Note right of F1: try t1 · PORCPTbatchCreation — sequential after all 5 WHILEs
+        F1->>ATP: [P1-17] Insertintoextractloadtable (ATP6) — record in load tracking table
+        ATP-->>F1: OK
+        F1->>ATP: [P1-18] poRcptinboundbatchupdcre (ATP7) — create batch record
+        ATP-->>F1: BATCH_ID
+        Note right of F1: CATCH_ALL ta5 → BatchCreationException (ATP14) → ehStop
+
+        %% ── Priority Assignment + AppEvent Publish ────────────────────────
+        Note right of F1: try t3 · callprioritywise
+        F1->>ATP: [P1-19] PORCPTprior (ATP8) — fetch/assign priority for this batch
+        ATP-->>F1: priority value
+        F1->>F1:  [P1-20] Assign BatchID + Priority (a24, a25) · STITCH sh0 · XSLT map
+        F1->>BUS: [P1-21] PUBLISH CALLPRIORITYWISEPORCPT {batchId, priority}
+        deactivate F1
+        Note right of BUS: Fire-and-forget publish → F2 subscribes asynchronously<br/>Continues → seq/02-staging-and-validation.mmd
+    end

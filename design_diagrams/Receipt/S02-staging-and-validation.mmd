@@ -1,0 +1,145 @@
+%%{
+  init: {
+    "sequence": { "mirrorActors": false, "wrap": true, "noteMargin": 8 },
+    "theme": "default"
+  }
+}%%
+
+%% ══════════════════════════════════════════════════════════════════════════
+%% PHASES 2 + 3 + 4 — Batch Dispatch → Stage Load → Validation
+%% Flows:
+%%   F2: IFP_EAM_PO_RECE_BATC_PROC_INTE   | 01.00.0000
+%%   F3: IFP_EAM_PO_RECEIPT_STAG_DATA_LOA  | 01.00.0000
+%%   F4: IFP_EAM_PO_RECEIPT_VALID_INTEG    | 01.00.0000  ⚠ projectHasWarnings
+%% Participants: 6  (BUS · F2 · F3 · F4 · ATP · BIP)
+%% Prev diagram: seq/01-extraction.mmd
+%% Next diagram: seq/03-import-and-callback.mmd
+%% ══════════════════════════════════════════════════════════════════════════
+
+sequenceDiagram
+
+    box AppEvent Bus
+        participant BUS as CALLPRIORITYWISEPORCPT
+    end
+    box OIC — Collocated Chain
+        participant F2 as F2 · BATC_PROC
+        participant F3 as F3 · STAG_DATA_LOA
+        participant F4 as F4 · VALID_INTEG
+    end
+    box External Systems
+        actor ATP as Oracle ATP DB<br/>(IFP_PO_RECEI_ATP_DB_CONNE)
+        actor BIP as Oracle BIP SOAP<br/>(IFP_PO_RECE_ORAC_BIP_SOAP_CONN)
+    end
+
+    Note right of BUS: Receives AppEvent published in seq/01-extraction.mmd
+
+    %% ══════════════════════════════════════════════════════════════════════
+    %% PHASE 2 — Batch Dispatch
+    %% ══════════════════════════════════════════════════════════════════════
+    rect rgb(220, 255, 220)
+        Note right of F2: Tracking: p_new_batch_id (primary), p_new_priority_col<br/>Trigger: SUBSCRIBE AppEvent — async from Phase 1
+
+        BUS->>F2: [P2-1] SUBSCRIBE CALLPRIORITYWISEPORCPT {batchId, priority}
+        activate F2
+
+        Note right of F2: try t0 · FetchPO_RCPTNewBatch
+        F2->>ATP: [P2-2] BatchstatusDRAFTupd (ATP1) — batch status → DRAFT
+        ATP-->>F2: OK
+        F2->>F3: [P2-3] COLLOCATED callPORCPTstagedataloading {batchId}
+        Note right of F2: ⚠ [NOTE] CATCH_ALL ta0 → ehStop only — no ATP logging.<br/>Collocated chain failures (F3→F4) propagate back and<br/>terminate silently here. Global CATCH_ALL ta1 sends email.
+        deactivate F2
+    end
+
+    %% ══════════════════════════════════════════════════════════════════════
+    %% PHASE 3 — Stage Data Loading
+    %% ══════════════════════════════════════════════════════════════════════
+    rect rgb(255, 248, 220)
+        Note right of F3: Tracking: pbatchId (primary), poicintid<br/>Trigger: REST push via COLLOCATED from F2
+
+        activate F3
+        Note right of F3: try t0 · callbatchsplitting
+        F3->>ATP: [P3-1] mainstageload (ATP1) — consolidate all 5 EAM grids into staging tables
+        ATP-->>F3: staging complete
+        F3->>ATP: [P3-2] updateReadybatchstatus (ATP2) — batch status → READY
+        ATP-->>F3: OK
+        F3->>F4: [P3-3] COLLOCATED CallChildPOValidationIntegration {batchId}
+        Note right of F3: ⚠ [NOTE] CATCH_ALL ta0 → ehStop only — no ATP logging.<br/>Global CATCH_ALL ta1 sends StageDataNotification email.
+        deactivate F3
+    end
+
+    %% ══════════════════════════════════════════════════════════════════════
+    %% PHASE 4 — Receipt Validation
+    %% ══════════════════════════════════════════════════════════════════════
+    rect rgb(255, 228, 228)
+        Note right of F4: ⚠ [WARN] projectHasWarnings=true (OIC export warning — console inspection needed)<br/>Trigger: REST push-sync (request-reply) via COLLOCATED from F3<br/>MEP: push-sync — F4 sends a REPLY back to F3 when done
+
+        activate F4
+
+        %% ── try t0 BIPreportcall — BIP fetch per BU ──────────────────────
+        Note right of F4: try t0 · BIPreportcall
+
+        F4->>ATP: [P4-1] fecthBUbatchlastrundetails (ATP1) — get BU list + last-run timestamps
+        ATP-->>F4: BU list + timestamps
+        Note right of ATP: ⚠ [DEFECT] Proc name misspelled: fecth... (missing 'c')
+
+        loop [P4-2] FOR each Business Unit [f0]
+            F4->>F4: Assignment a7 Setreportrundate — set report date for this BU
+
+            %% ── BIP Call 1: PO Receipt Report ────────────────────────────
+            Note right of F4: try t3 · BIPcallPOreceipt
+            F4->>BIP:  [P4-3] POreceiptreport · runReport  [adapter label: SOAP4]
+            BIP-->>F4: PO receipt data (base64 XML report)
+            F4->>F4:   XSLT m7 · stageFile sf3 write
+            opt [P4-4] report has data [ROUTER s0/sc0]
+                F4->>F4:  stageFile sf6 segmented read
+                F4->>ATP: [P4-5] POreceipt (ATP2) — insert PO receipt reference rows
+                ATP-->>F4: OK
+            end
+            Note right of F4: CATCH_ALL ta0 → email n0 + ehStop
+
+            %% ── BIP Call 2: Supplier Report ──────────────────────────────
+            Note right of F4: try t2 · BIPcallSupplierReport
+            F4->>BIP:  [P4-6] BIPgetsupplierReport · runReport  [adapter label: SOAP2]
+            BIP-->>F4: supplier reference data (base64 XML report)
+            F4->>F4:   XSLT m6 · stageFile sf2 write
+            opt [P4-7] report has data [ROUTER s1/sc1]
+                F4->>F4:  stageFile sf5 segmented read
+                F4->>ATP: [P4-8] loadPOsupplierdet (ATP3) — insert supplier reference rows
+                ATP-->>F4: OK
+            end
+            Note right of F4: CATCH_ALL ta1 → email n1 + ehStop
+
+            %% ── BIP Call 3: Inventory Item Report ────────────────────────
+            Note right of F4: try t4 · BIPCallinvItemReport
+            F4->>BIP:  [P4-9] BIPgetInvItemReport · runReport  [adapter label: SOAP4]
+            BIP-->>F4: inventory item data (base64 XML report)
+            F4->>F4:   XSLT m10 · stageFile sf4 write
+            Note right of BIP: ⚠ [DEFECT] POreceiptreport (step P4-3) AND BIPgetInvItemReport (step P4-9)<br/>both carry adapter label 'SOAP4' — ambiguous in OIC monitoring UI.<br/>Cannot distinguish failed call without inspecting adapter payload.
+            opt [P4-10] report has data [ROUTER s2/sc2]
+                F4->>F4:  stageFile sf7 segmented read
+                F4->>ATP: [P4-11] loadInvItemdetailsrpt (ATP4) — insert inventory item rows
+                ATP-->>F4: OK
+            end
+            Note right of F4: CATCH_ALL ta2 → email n2 + ehStop
+
+            %% ── Update last-run date for this BU ─────────────────────────
+            F4->>ATP: [P4-12] updatelastrundate (ATP5) — write BU last-run timestamp
+            ATP-->>F4: OK
+        end
+
+        %% ── try t5 POReceiptValidationScope ──────────────────────────────
+        Note right of F4: try t5 · POReceiptValidationScope
+        F4->>ATP: [P4-13] PORcptValidation (ATP6) — main validation stored procedure
+        ATP-->>F4: validation result
+
+        opt [P4-14] IN-PROCESS status update needed [ROUTER s3/sc3]
+            F4->>ATP: [P4-15] UpdateInprocessbatchstatus (ATP7) — batch status → IN-PROCESS
+            ATP-->>F4: OK
+        end
+
+        F4->>F3: [P4-16] COLLOCATED CallChildImportInboundint {batchId}
+        Note right of F4: Hands off to F5 (seq/03-import-and-callback.mmd)<br/>⚠ [NOTE] CATCH_ALL ta3 → ehStop only — no email, no ATP logging.
+
+        F4-->>F3: [P4-17] REPLY — push-sync response back to F3 (MEP completes)
+        deactivate F4
+    end

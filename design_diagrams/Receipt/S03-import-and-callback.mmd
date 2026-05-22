@@ -1,0 +1,200 @@
+%%{
+  init: {
+    "sequence": { "mirrorActors": false, "wrap": true, "noteMargin": 8 },
+    "theme": "default"
+  }
+}%%
+
+%% ══════════════════════════════════════════════════════════════════════════
+%% PHASES 5 + 6 — FBDI Import → ERP Import Callback
+%% Flows:
+%%   F5: IFP_EAM_PO_IMPORT_INTEGR           | 01.00.0000
+%%   F6: IFP_PO_RECEI_IMPOR_CALLB_REQUE     | 01.00.0000  ⚠ projectHasWarnings
+%% Participants: 7  (F5 · ATP · ERP · BIP · BUS · F6 · EVT2)
+%% Prev diagram: seq/02-staging-and-validation.mmd
+%% Next diagram: seq/04-eam-writeback.mmd
+%% ══════════════════════════════════════════════════════════════════════════
+
+sequenceDiagram
+
+    box OIC
+        participant F5  as F5 · IMPORT_INTEGR
+        participant F6  as F6 · IMPOR_CALLB
+    end
+    box External Systems
+        actor ATP as Oracle ATP DB<br/>(IFP_PO_RECEI_ATP_DB_CONNE)
+        actor ERP as Oracle ERP Cloud<br/>(IFP_PO_RECE_ORAC_ERP_CLOU_CONN)
+        actor BIP as Oracle BIP SOAP<br/>(IFP_PO_RECE_ORAC_BIP_SOAP_CONN)
+    end
+    box AppEvent Bus
+        participant BUS1 as CALLPRIORITYWISEPORCPT
+        participant BUS2 as UPDATEERRORINEAMHEXAGON
+    end
+
+    Note right of F5: Entry: COLLOCATED CallChildImportInboundint from F4<br/>(see seq/02-staging-and-validation.mmd step P4-16)
+
+    %% ══════════════════════════════════════════════════════════════════════
+    %% PHASE 5 — FBDI Import
+    %% ══════════════════════════════════════════════════════════════════════
+    rect rgb(240, 228, 255)
+        Note right of F5: Trigger: REST push via COLLOCATED from F4<br/>FBDI package: header CSV + transaction CSV + properties file + ZIP archive
+
+        activate F5
+        F5->>F5:  [P5-1] Assignments a0–a7, a12 (batch vars, file path vars)
+        F5->>ATP: [P5-2] getimportbatch (ATP1) — fetch batch metadata
+        ATP-->>F5: batch metadata
+
+        %% ── try t0 POReceiptmainScope — ROUTER s0/sc0 ────────────────────
+        Note right of F5: try t0 · POReceiptmainScope — ROUTER s0/sc0
+
+        F5->>ATP: [P5-3] FetchPOReceiptfbdidata (ATP2) — fetch FBDI-ready receipt rows
+        ATP-->>F5: receipt records
+
+        opt [P5-4] receipt header rows exist [ROUTER s1/sc1]
+            F5->>F5: stageFile writeRcptHeaderFile (sf0) — write receipt header CSV
+        end
+
+        F5->>F5: [P5-5] stageFile WriteRcptTrxFile (sf1) — write receipt transaction CSV
+        F5->>F5: [P5-6] stageFile writePropertiesFile (sf3) — write FBDI properties file
+        F5->>F5: [P5-7] stageFile createZipFile (sf2) — create FBDI ZIP archive
+        F5->>F5: [P5-8] stageFile listZipFile (sf4) — verify ZIP contents
+
+        F5->>ERP: [P5-9] importRcptsToERP [importBulkData] — upload ZIP to ERP UCM, submit ESS job
+        ERP-->>F5: ESS requestId
+
+        F5->>F5:  ACTIVITY_STREAM_LOGGER lg0
+        F5->>ATP: [P5-10] updateBatchStatusProcedure (ATP3) — store ESS requestId in ATP
+        ATP-->>F5: OK
+        F5->>F5:  [P5-11] Assignment a10 (load_request_id)
+        Note right of F5: CATCH_ALL ta1 → rethrow th0 to globalTry CATCH_ALL
+
+        %% ── try t1 ProcessedtrxReport — ROUTER s2/sc2 ────────────────────
+        Note right of F5: try t1 · ProcessedtrxReport — ROUTER s2/sc2
+
+        F5->>ATP: [P5-12] FetchPORCPTproecssdata (ATP4) — fetch processed receipt summary
+        ATP-->>F5: processed receipt summary
+        Note right of ATP: ⚠ [DEFECT] Proc name misspelled: proecss... (double 's', transposed 'oe')
+
+        F5->>F5: [P5-13] Assign a11, a13 AssignStatus
+        F5->>F5: stageFile writeporcptprocesscolumn (sf5)
+        F5->>F5: stageFile WritePORCPTprocessdata (sf6)
+        F5->>F5: notification email n1 (processed summary)
+        F5->>F5: ACTIVITY_STREAM_LOGGER lg1
+
+        F5->>BUS2: [P5-14] PUBLISH UPDATEERRORINEAMHEXAGON {batchId}
+        Note right of BUS2: Fire-and-forget — F5 does NOT wait for EAM writeback.<br/>F7 will process asynchronously (seq/04-eam-writeback.mmd).<br/>⚠ [RISK] F5 and F6 both publish to this event for the same<br/>batchId — two concurrent F7 instances possible (no mutex guard).
+        deactivate F5
+    end
+
+    %% ══════════════════════════════════════════════════════════════════════
+    %% PHASE 6 — ERP Import Callback
+    %% ══════════════════════════════════════════════════════════════════════
+    rect rgb(255, 243, 200)
+        Note right of F6: ⚠ [WARN] projectHasWarnings=true (OIC export warning — console inspection needed)<br/>Trigger: ERP Cloud business event poimportorderscallback (async — ESS job completion)<br/>Tracking: DOCUMENTID primary (ESS requestId)<br/>XPath: /onEvent/ErpImportBulkDataEvent/DOCUMENTID
+
+        ERP->>F6: [P6-1] poimportorderscallback onEvent [ERPInteg_Import_Completed]
+        activate F6
+        Note right of F6: ⚠ [RISK] Async gap: if ERP ESS job fails silently, poimportorderscallback<br/>never fires. Batch stuck in INPROCESS permanently — no OIC watchdog.
+
+        F6->>F6: [P6-2] STITCH sh2 · global vars gtv0–gtv6
+        F6->>F6: stageFile writerequestidfilercpt (sf8) — persist ESS requestId to stage file
+        F6->>F6: Assignments a0–a4
+
+        %% ── try t0 ScopePrioritywisebatch — chain-fire logic ─────────────
+        Note right of F6: try t0 · ScopePrioritywisebatch — chain-fire logic
+
+        F6->>ATP: [P6-3] getprioritywisenextbatch (ATP1) — query next queued batch
+        ATP-->>F6: next queued batch (if any)
+
+        opt [P6-4] next priority batch exists [ROUTER s5/sc6]
+            F6->>BUS1: [P6-5] PUBLISH CALLPRIORITYWISEPORCPT {nextBatchId, priority}
+            Note right of BUS1: Chain-fire: F2 begins next batch concurrently<br/>while F6 continues processing current batch results.
+        end
+        Note right of F6: else sc7 → ACTIVITY_STREAM_LOGGER lg0 (no more batches in queue)<br/>CATCH_ALL ta2 → ehStop
+
+        %% ── try t1 MainScope — 3 independent routes ──────────────────────
+        Note right of F6: try t1 · MainScope — ROUTER s0 — 3 non-overlapping routes<br/>Route selected by SUMMARYSTATUS value from ERP callback payload
+
+        %% ── Route sc0: Standard import results (SUMMARYSTATUS = 0) ───────
+        opt [P6-6] Route sc0 — SUMMARYSTATUS = 0 — standard error report path
+            F6->>ATP: [P6-7] updateimportrequestid (ATP2)
+            ATP-->>F6: OK
+            F6->>F6:   STITCH sh0
+            F6->>BIP:  [P6-8] callBIPReport · runReport (SOAP1) — error summary report
+            BIP-->>F6: error summary (base64 XML)
+            F6->>F6:   stageFile sf0 writestagefile · XSLT
+
+            opt [P6-9] error rows in report [ROUTER s1/sc2]
+                F6->>F6:  stageFile sf2 segmented read
+                F6->>ATP: [P6-10] insertpoerroratp (ATP4)
+                ATP-->>F6: OK
+                F6->>ATP: [P6-11] POerrordetailsrpt (ATP6)
+                ATP-->>F6: OK
+            end
+
+            F6->>BIP:  [P6-12] callImportDetailsReport · runReport (SOAP3) — import detail report
+            BIP-->>F6: import detail (base64 XML)
+            F6->>F6:   stageFile sf4 write · XSLT
+
+            opt [P6-13] detail rows in report [ROUTER s3/sc4]
+                F6->>F6:  stageFile sf6 segmented read
+                F6->>ATP: [P6-14] insertImportDetailsintoATPDB (ATP8)
+                ATP-->>F6: OK
+                F6->>ATP: [P6-15] callImportDetailsProcedure (ATP9)
+                ATP-->>F6: OK
+            end
+        end
+
+        %% ── Route sc1: Extended error report (SUMMARYSTATUS = 1) ─────────
+        opt [P6-16] Route sc1 — SUMMARYSTATUS = 1 — extended error report path
+            F6->>ATP: [P6-17] updateimportrequestid (ATP3)
+            ATP-->>F6: OK
+            F6->>F6:   STITCH sh1
+            F6->>BIP:  [P6-18] callErrorReport · runReport (SOAP2) — extended error report
+            BIP-->>F6: extended error detail (base64 XML)
+            F6->>F6:   stageFile sf1 write · XSLT
+
+            opt [P6-19] error rows in report [ROUTER s2/sc3]
+                F6->>F6:  stageFile sf3 segmented read
+                F6->>ATP: [P6-20] insertImportDetailsError (ATP10)
+                ATP-->>F6: OK
+                F6->>ATP: [P6-21] callImportDetailsErrorProcedure (ATP11)
+                ATP-->>F6: OK
+            end
+
+            F6->>BIP:  [P6-22] SOAP4 · runReport — import detail (error variant)
+            BIP-->>F6: error variant detail (base64 XML)
+            F6->>F6:   stageFile sf5 write · XSLT
+
+            opt [P6-23] detail rows in report [ROUTER s4/sc5]
+                F6->>F6:  stageFile sf7 segmented read
+                F6->>ATP: [P6-24] insertImportDetailsintoATPDB (ATP5)
+                ATP-->>F6: OK
+                F6->>ATP: [P6-25] POerrordetailsrpt (ATP7)
+                ATP-->>F6: OK
+            end
+        end
+
+        %% ── Route sc8: ESS status-only / no processable report ───────────
+        opt [P6-26] Route sc8 — ESS status-only (no processable BIP report available)
+            F6->>ERP: [P6-27] DonloadZIPFile (ERP Cloud2) — download ESS ZIP log
+            ERP-->>F6: ESS ZIP log
+            Note right of ERP: ⚠ [DEFECT] ERP adapter operation name: 'DonloadZIPFile' — typo (missing 'w')
+            F6->>F6: stageFile sf11 WriteERPLog — write raw ESS log
+            F6->>F6: notification email n1
+        end
+
+        %% ── try t2 ProcessedtrxReport ─────────────────────────────────────
+        Note right of F6: try t2 · ProcessedtrxReport — runs after whichever route completed
+
+        F6->>ATP: [P6-28] FetchPORcptproecssdata (ATP12) — fetch processed receipt summary
+        ATP-->>F6: processed receipt summary
+        Note right of ATP: ⚠ [DEFECT] Proc name misspelled: proecss... (double 's', transposed 'oe')
+        F6->>F6: stageFile sf9 writeporcptprocesscolumn
+        F6->>F6: stageFile sf10 WritePORCPTprocessdata
+        F6->>F6: notification email n2 (processed summary)
+
+        F6->>BUS2: [P6-29] PUBLISH UPDATEERRORINEAMHEXAGON {batchId}
+        Note right of BUS2: Continues → seq/04-eam-writeback.mmd<br/>⚠ [RISK] Both F5 (P5-14) and F6 (P6-29) publish this event<br/>for the same batchId. Two F7 instances may run concurrently.<br/>ATP query procedures must be idempotent to avoid duplicate writes.
+        deactivate F6
+    end
